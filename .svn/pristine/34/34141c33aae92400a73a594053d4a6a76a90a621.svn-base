@@ -1,0 +1,156 @@
+package com.xiezhiai.wechatplugin.adapter;
+
+import android.support.annotation.NonNull;
+import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.xiezhiai.wechatplugin.R;
+import com.xiezhiai.wechatplugin.model.xiezhi.Commonqa;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Created by shijiwei on 2018/10/29.
+ *
+ * @Desc:
+ */
+public class CommonqaListAdapter extends RecyclerView.Adapter<CommonqaListAdapter.ViewHolder> {
+
+    private List<Commonqa> commonqaList;
+    private boolean isEdit = false;
+
+    public CommonqaListAdapter(List<Commonqa> commonqaList) {
+        this.commonqaList = commonqaList;
+    }
+
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
+        View v = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.item_comonqa_list, viewGroup, false);
+        return new ViewHolder(v);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ViewHolder holder, final int i) {
+        Commonqa entity = commonqaList.get(i);
+
+        holder.cb.setVisibility(isEdit ? View.VISIBLE : View.GONE);
+
+        if (entity.getImgPaths() == null || entity.getImgPaths().size() == 0) {
+            holder.imgLayer.setVisibility(View.GONE);
+        } else {
+            holder.imgLayer.setVisibility(View.VISIBLE);
+        }
+
+        if (entity.isOpen()) {
+            holder.tvLabel.setText("ON");
+            holder.tvLabel.setBackgroundResource(R.mipmap.bg_on);
+        } else {
+            holder.tvLabel.setText("OFF");
+            holder.tvLabel.setBackgroundResource(R.mipmap.bg_off);
+        }
+        holder.tvTitle.setText(entity.getTitle());
+        holder.tvContent.setText(entity.getContent());
+        holder.cb.setChecked(entity.isChecked());
+        holder.layoutCommonqa.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                commonqaListAdapterListner.onItemClick(i);
+            }
+        });
+        holder.cb.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CheckBox cb = (CheckBox) v;
+                commonqaList.get(i).setChecked(cb.isChecked());
+                int size = 0;
+                List<Commonqa> select = new ArrayList<>();
+                for (int j = 0; j < commonqaList.size(); j++) {
+                    if (commonqaList.get(j).isChecked()) {
+                        select.add(commonqaList.get(j));
+                        size++;
+                    }
+                }
+                if (commonqaListAdapterListner != null)
+                    commonqaListAdapterListner.onSelect(size, select);
+            }
+        });
+    }
+
+    @Override
+    public int getItemCount() {
+        return commonqaList == null ? 0 : commonqaList.size();
+    }
+
+    public class ViewHolder extends RecyclerView.ViewHolder {
+
+        CheckBox cb;
+        TextView tvLabel;
+        TextView tvTitle;
+        TextView tvContent;
+        View imgLayer;
+        ImageView iv1;
+        ImageView iv2;
+        ImageView iv3;
+        LinearLayout layoutCommonqa;
+
+
+        public ViewHolder(@NonNull View itemView) {
+            super(itemView);
+
+            cb = itemView.findViewById(R.id.cb_commonqa);
+            tvLabel = itemView.findViewById(R.id.tv_common_qa_label);
+            tvTitle = itemView.findViewById(R.id.tv_common_qa_title);
+            tvContent = itemView.findViewById(R.id.tv_common_qa_content);
+            imgLayer = itemView.findViewById(R.id.layer_imgs);
+            iv1 = itemView.findViewById(R.id.iv_1);
+            iv2 = itemView.findViewById(R.id.iv_2);
+            iv3 = itemView.findViewById(R.id.iv_3);
+            layoutCommonqa = itemView.findViewById(R.id.layout_commonqa);
+        }
+    }
+
+
+    public interface CommonqaListAdapterListner {
+
+        void onSelect(int size, List<Commonqa> select);
+
+        void onItemClick(int postion);
+    }
+
+
+    private CommonqaListAdapterListner commonqaListAdapterListner;
+
+    public void setCommonqaListAdapterListner(CommonqaListAdapterListner commonqaListAdapterListner) {
+        this.commonqaListAdapterListner = commonqaListAdapterListner;
+    }
+
+    public void isEdit(boolean edit) {
+        this.isEdit = edit;
+        notifyDataSetChanged();
+    }
+
+    public boolean isEdit() {
+        return isEdit;
+    }
+
+    public void checkAll(boolean all) {
+        for (int i = 0; i < commonqaList.size(); i++) {
+            commonqaList.get(i).setChecked(all);
+        }
+        notifyDataSetChanged();
+        if (commonqaListAdapterListner != null)
+            commonqaListAdapterListner.
+                    onSelect(
+                            all ? commonqaList.size() : 0,
+                            all ? commonqaList : null
+                    );
+    }
+}

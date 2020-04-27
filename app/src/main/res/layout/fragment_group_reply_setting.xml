@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="20dp"
+                    android:gravity="center_vertical"
+                    android:text="群消息自动回复"
+                    android:textColor="@color/color_000000"
+                    android:textSize="17sp" />
+
+                <CheckBox
+                    android:id="@+id/cb_auto_reply_chatroom"
+                    android:layout_width="57dp"
+                    android:layout_height="25dp"
+                    android:layout_alignParentRight="true"
+                    android:layout_marginRight="24dp"
+                    android:background="@drawable/selector_setting_check_background"
+                    android:button="@null" />
+
+            </RelativeLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="20dp"
+                android:layout_marginTop="16dp"
+                android:gravity="center_vertical"
+                android:lineSpacingExtra="4dp"
+                android:text="@string/group_reply_msg_desc"
+                android:textColor="@color/txt_999999"
+                android:textSize="13sp" />
+
+            <!--群内闲聊自动回复-->
+            <LinearLayout
+                android:id="@+id/chatting_setting_layer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="20dp"
+                        android:gravity="center_vertical"
+                        android:text="群内闲聊自动回复"
+                        android:textColor="@color/color_000000"
+                        android:textSize="17sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_chatting_auto_reply_chatroom"
+                        android:layout_width="57dp"
+                        android:layout_height="25dp"
+                        android:layout_alignParentRight="true"
+                        android:layout_marginRight="24dp"
+                        android:background="@drawable/selector_setting_check_background"
+                        android:button="@null" />
+
+                </RelativeLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_vertical"
+                    android:lineSpacingExtra="4dp"
+                    android:text="@string/group_chatting_msg_desc"
+                    android:textColor="@color/txt_999999"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:layout_marginTop="28dp"
+                android:background="#F4F4F4"
+                android:gravity="center"
+                android:text="一 目标回复 一"
+                android:textColor="@color/color_666666"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:id="@+id/layout_all_chatroom"
+                android:layout_width="match_parent"
+                android:layout_height="73dp"
+                android:orientation="horizontal">
+
+                <CheckBox
+                    android:id="@+id/cb_all_chatroom"
+                    android:layout_width="22dp"
+                    android:layout_height="15dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="20dp"
+                    android:background="@drawable/selector_group_helper_check1"
+                    android:button="@null" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="19dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="全部群组"
+                        android:textColor="@color/color_000000"
+                        android:textSize="17sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="发送给所有微信所在群聊"
+                        android:textColor="@color/txt_999999"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="5dp"
+                android:background="#F4F4F4" />
+
+            <LinearLayout
+                android:id="@+id/layout_part_chatroom"
+                android:layout_width="match_parent"
+                android:layout_height="73dp"
+                android:orientation="horizontal">
+
+                <CheckBox
+                    android:id="@+id/cb_part_chatroom"
+                    android:layout_width="22dp"
+                    android:layout_height="15dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="20dp"
+                    android:background="@drawable/selector_group_helper_check1"
+                    android:button="@null" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="19dp"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="部分群组"
+                        android:textColor="@color/color_000000"
+                        android:textSize="17sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="发送给所选群组（可多选）"
+                        android:textColor="@color/txt_999999"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginLeft="61dp"
+                android:background="#F4F4F4" />
+
+            <com.xiezhiai.wechatplugin.widget.WrapcontentListView
+                android:id="@+id/lv_chatroom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:divider="@color/float_transparent"
+                android:dividerHeight="0dp"
+                android:overScrollMode="never" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/shape_main_frg_background"
+    android:orientation="vertical">
+
+    <com.xiezhiai.wechatplugin.widget.CommonTopBar
+        android:id="@+id/common_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:left_button_text="@string/back"
+        app:left_button_visible="true"
+        app:title="使用指南" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:overScrollMode="never"
+        android:padding="10dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!--环境搭建-->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/shape_white_corner_background"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="环境搭建"
+                    android:textColor="@color/color_000000"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/tv_etc_step_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    android:text="1、所使用的手机必须拥有root权限。"
+                    android:textColor="@color/color_666666"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tv_etc_step_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="2、手机中安装的微信版本为V6.6.6（在微信-我的-设置-关于微信中查看版本号），若非该版本，可在下方下载安装。"
+                    android:textColor="@color/color_666666"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/btn_download_wechat"
+                    android:layout_width="180dp"
+                    android:layout_height="35dp"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/shape_download_wechat_button_background"
+                    android:gravity="center"
+                    android:text="下载V6.6.6版本微信"
+                    android:textColor="@color/white" />
+
+                <TextView
+                    android:id="@+id/tv_etc_step_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="3、需要安装插件；Xposed，点击以下链接安装。"
+                    android:textColor="@color/color_666666"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/btn_download_xposed"
+                    android:layout_width="180dp"
+                    android:layout_height="35dp"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/shape_send_msg_button_background"
+                    android:gravity="center"
+                    android:text="下载XposedInstaller"
+                    android:textColor="@color/white" />
+
+                <TextView
+                    android:id="@+id/tv_etc_step_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="4、更新软件后需要重启设备。"
+                    android:textColor="@color/color_666666"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <!--安装步骤-->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/shape_white_corner_background"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="安装步骤"
+                    android:textColor="@color/color_000000"
+                    android:textSize="17sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="18dp"
+                    android:background="@drawable/shape_guide_step_item_bg">
+
+                    <TextView
+                        android:layout_width="33dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shape_guide_step_bg"
+                        android:gravity="center"
+                        android:text="1"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="16dp"
+                        android:gravity="center_vertical"
+                        android:text="确认手机已经ROOT"
+                        android:textColor="@color/txt_333333"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="18dp"
+                    android:background="@drawable/shape_guide_step_item_bg">
+
+                    <TextView
+                        android:layout_width="33dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shape_guide_step_bg"
+                        android:gravity="center"
+                        android:text="2"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="16dp"
+                        android:gravity="center_vertical"
+                        android:text="安装XposedInstaller和微信V6.6.6"
+                        android:textColor="@color/txt_333333"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/shape_guide_step_item_bg">
+
+                    <TextView
+                        android:layout_width="33dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shape_guide_step_bg"
+                        android:gravity="center"
+                        android:text="3"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="16dp"
+                        android:gravity="center_vertical"
+                        android:text="安装小晓微信助手"
+                        android:textColor="@color/txt_333333"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/shape_guide_step_item_bg">
+
+                    <TextView
+                        android:layout_width="33dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shape_guide_step_bg"
+                        android:gravity="center"
+                        android:text="4"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="16dp"
+                        android:gravity="center_vertical"
+                        android:lineSpacingExtra="6dp"
+                        android:text="打开Xposed，在左上角菜单中打开模块面板，将“微信助手”勾选"
+                        android:textColor="@color/txt_333333"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/shape_guide_step_item_bg">
+
+                    <TextView
+                        android:layout_width="33dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shape_guide_step_bg"
+                        android:gravity="center"
+                        android:text="5"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="16dp"
+                        android:gravity="center_vertical"
+                        android:text="重启设备"
+                        android:textColor="@color/txt_333333"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/shape_guide_step_item_bg">
+
+                    <TextView
+                        android:layout_width="33dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shape_guide_step_bg"
+                        android:gravity="center"
+                        android:text="6"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="16dp"
+                        android:gravity="center_vertical"
+                        android:text="登录微信，打开微信助手，绑定微信"
+                        android:textColor="@color/txt_333333"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+    </ScrollView>
+
+
+</LinearLayout>

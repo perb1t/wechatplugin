@@ -1,0 +1,62 @@
+<resources>
+    <string name="app_name">小晓微商助手</string>
+    <string name="automatic_installation">WechatPlugin</string>
+    <string name="description">WechatPlugin</string>
+
+    <string name="parse_erro">解析失败</string>
+    <string name="check_net">网络异常,请检查网络是否连接</string>
+    <string name="net_erro">网络连接发生异常</string>
+    <string name="request_out_time">获取结果超时</string>
+    <string name="not_found_server">找不到服务器</string>
+    <string name="url_erro">地址错误</string>
+    <string name="null_data">数据为空</string>
+    <string name="system_erro">系统异常</string>
+
+    <string name="edit">编辑</string>
+    <string name="complete">完成</string>
+    <string name="back">返回</string>
+    <string name="next_step">下一步</string>
+    <string name="send_target">发送目标</string>
+
+    <string name="tab_home">首页</string>
+    <string name="tab_group_helper">群助手</string>
+    <string name="tab_qalib">知识库</string>
+    <string name="tab_my">我的</string>
+
+    <string name="common_qa">常用问答</string>
+    <string name="sns_qa">朋友圈问答</string>
+    <string name="sns_mine">我的朋友圈</string>
+    <string name="genert_goods">生成商品</string>
+    <string name="edit_goods_info">编辑商品信息</string>
+    <string name="login">登录</string>
+    <string name="register">注册</string>
+    <string name="exit_login">退出登录</string>
+    <string name="group_send_msg">群发消息</string>
+    <string name="send_msg">发送消息</string>
+    <string name="edit_msg">群发消息</string>
+    <string name="group_send_msg_g">群发微信群</string>
+    <string name="group_reply_setting">群回复设置</string>
+    <string name="group_send_msg_desc">自动为您群发消息给好友，默认发送全部好友，您也可以选择好友标签分类群发。</string>
+    <string name="group_send_msg_g_desc">自动为您群发消息给好友，默认发送全部好友，您也可以选择好友标签分类群发。</string>
+    <string name="group_reply_msg_desc">1、只有当群里人员@你时，才能触发自动回复；\n2、只有命中“知识库管理”中对应的问题才会给出回复。</string>
+    <string name="group_chatting_msg_desc">开启后，可以回复特定的闲聊内容，如“你好”，“在吗”，“再见”等常见闲聊内容。</string>
+    <string name="empty_sns_desc">可以获取您发布的\n朋友圈信息来生成问答库！</string>
+
+    <string name="common_qa_desc">为该微信号设置您的好友经常向您咨询的问题和对应的答案。</string>
+    <string name="sns_desc">从您发布的朋友圈获取信息为每个图片生成商品，帮助您快速回复好友咨询。</string>
+    <string name="user_auto_reply_desc">开启自动回复托管后，好友向您咨询即可触发自动回复</string>
+    <string name="user_chatting_auto_reply_desc">开启“闲聊回复”后，可以回复特定的闲聊内容，如“你好”“在吗？”“再见”等常见闲聊内容\n不开启“闲聊回复”时，只有命中“问答管理”中对应的问题才会给出回复答案</string>
+
+    <string name="auto_receive_money_desc">自动领取好友发送给您的红包</string>
+    <string name="auto_receive_transfer_desc">自动收取好友发送给您的转账</string>
+    <string name="input_you_want_to_send_msg"> 请输入你想发送的消息...</string>
+    <string name="bind_wechat_tips_1">是否允许小晓微信助手\n绑定您当前登录的微信号？</string>
+    <string name="bind_wechat_tips_2">绑定后，当您的微信处于登录状态，小晓微信助手可以获得以下相关信息：</string>
+    <string name="bind_wechat_tips_3">1、微信头像、昵称、微信号等个人信息\n2、您发布的朋友圈相关信息\n3、红包、转账等信息</string>
+
+    <string name="unbind_wechat_tips_">是否确认解除与该微信号的绑定？</string>
+    <string name="bind_wechat_success_tips_1">您手机上登录的微信号已绑定!</string>
+    <string name="bind_wechat_success_tips_2">若要绑定新微信号，需先通过微信登录，小晓微信助手才能获取相关绑定信息。</string>
+
+
+</resources>

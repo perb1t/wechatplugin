@@ -1,0 +1,30 @@
+package com.xiezhiai.wechatplugin.model.wechat;
+
+import android.widget.ImageView;
+
+import java.io.Serializable;
+import java.util.List;
+
+/**
+ * Created by caicai on 2018/10/30.
+ */
+public class GoodsPictureBean implements Serializable{
+    ImageView imageView;
+    int tag;
+
+    public ImageView getImageView() {
+        return imageView;
+    }
+
+    public void setImageView(ImageView imageView) {
+        this.imageView = imageView;
+    }
+
+    public int getTag() {
+        return tag;
+    }
+
+    public void setTag(int tag) {
+        this.tag = tag;
+    }
+}

@@ -1,0 +1,163 @@
+package com.xiezhiai.wechatplugin.model.wechat;
+
+import android.os.Parcel;
+import android.os.Parcelable;
+import android.widget.Toast;
+
+/**
+ * Created by shijiwei on 2018/10/16.
+ *
+ * @Desc:
+ */
+public class Message implements Parcelable {
+
+    public static final int TEXT = 1;
+    public static final int IMAGE = 3;
+    public static final int VOICE = 34;
+    public static final int VIDEO = 43;
+
+    private String talker;
+    private String content;
+    private int type;
+    private int isSend;
+    private String msgSvrId;
+    private String msgId;
+    private String imgPath;
+    private String replyContent;
+    private boolean isInitiativeSend;
+
+    public Message(String content) {
+        this.content = content;
+    }
+
+    public Message(String talker, String content, int type, int isSend, String msgSvrId, String msgId, String imgPath) {
+        this.talker = talker;
+        this.content = content;
+        this.type = type;
+        this.isSend = isSend;
+        this.msgSvrId = msgSvrId;
+        this.imgPath = imgPath;
+        this.msgId = msgId;
+    }
+
+    public Message(String talker, String replyContent) {
+        this.talker = talker;
+        this.replyContent = replyContent;
+        this.isInitiativeSend = true;
+        this.type = TEXT;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getTalker() {
+        return talker;
+    }
+
+    public void setTalker(String talker) {
+        this.talker = talker;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    public int getIsSend() {
+        return isSend;
+    }
+
+    public void setIsSend(int isSend) {
+        this.isSend = isSend;
+    }
+
+    public String getMsgSvrId() {
+        return msgSvrId;
+    }
+
+    public void setMsgSvrId(String msgSvrId) {
+        this.msgSvrId = msgSvrId;
+    }
+
+    public String getImgPath() {
+        return imgPath;
+    }
+
+    public void setImgPath(String imgPath) {
+        this.imgPath = imgPath;
+    }
+
+    public String getReplyContent() {
+        return replyContent;
+    }
+
+    public void setReplyContent(String replyContent) {
+        this.replyContent = replyContent;
+    }
+
+    public boolean isInitiativeSend() {
+        return isInitiativeSend;
+    }
+
+    public void setInitiativeSend(boolean initiativeSend) {
+        isInitiativeSend = initiativeSend;
+    }
+
+    public String getMsgId() {
+        return msgId;
+    }
+
+    public void setMsgId(String msgId) {
+        this.msgId = msgId;
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.talker);
+        dest.writeString(this.content);
+        dest.writeInt(this.type);
+        dest.writeInt(this.isSend);
+        dest.writeString(this.msgSvrId);
+        dest.writeString(this.msgId);
+        dest.writeString(this.imgPath);
+        dest.writeString(this.replyContent);
+        dest.writeByte(this.isInitiativeSend ? (byte) 1 : (byte) 0);
+    }
+
+    protected Message(Parcel in) {
+        this.talker = in.readString();
+        this.content = in.readString();
+        this.type = in.readInt();
+        this.isSend = in.readInt();
+        this.msgSvrId = in.readString();
+        this.msgId = in.readString();
+        this.imgPath = in.readString();
+        this.replyContent = in.readString();
+        this.isInitiativeSend = in.readByte() != 0;
+    }
+
+    public static final Creator<Message> CREATOR = new Creator<Message>() {
+        @Override
+        public Message createFromParcel(Parcel source) {
+            return new Message(source);
+        }
+
+        @Override
+        public Message[] newArray(int size) {
+            return new Message[size];
+        }
+    };
+}

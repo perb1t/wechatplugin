@@ -1,0 +1,27 @@
+#Internal package file, do not edit.
+#Thu Nov 29 11:33:50 CST 2018
+2.base=D\:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\merged_assets\\release\\mergeReleaseAssets\\out
+5.set=DEX
+0.path=litepal.xml
+2.baseType=DIRECTORY
+3.base=D\:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\merged_assets\\release\\mergeReleaseAssets\\out
+2.set=ASSET
+1.path=wechat.apk
+4.base=D\:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\merged_assets\\release\\mergeReleaseAssets\\out
+count=6
+5.baseType=DIRECTORY
+2.path=xposed_init
+5.base=D\:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\transforms\\dexMerger\\release\\0
+4.set=ASSET
+3.path=VirtualXposed_0.16.1.apk
+3.baseType=DIRECTORY
+1.set=ASSET
+4.path=XposedInstaller.apk
+1.baseType=DIRECTORY
+5.path=classes.dex
+0.base=D\:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\merged_assets\\release\\mergeReleaseAssets\\out
+0.baseType=DIRECTORY
+3.set=ASSET
+1.base=D\:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\merged_assets\\release\\mergeReleaseAssets\\out
+4.baseType=DIRECTORY
+0.set=ASSET

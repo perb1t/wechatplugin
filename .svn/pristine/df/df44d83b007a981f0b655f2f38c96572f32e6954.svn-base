@@ -1,0 +1,162 @@
+package com.xiezhiai.wechatplugin.ui.frg;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.TextView;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.xiezhiai.wechatplugin.R;
+import com.xiezhiai.wechatplugin.core.GlobalVariable;
+import com.xiezhiai.wechatplugin.func.nohttp.URLManager;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleRequest;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleResult;
+import com.xiezhiai.wechatplugin.model.xiezhi.WXUser;
+import com.xiezhiai.wechatplugin.ui.aty.CommonqaListActivity;
+import com.xiezhiai.wechatplugin.ui.aty.SnsqaListActivity;
+import com.xiezhiai.wechatplugin.ui.base.BaseFragment;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+import com.yanzhenjie.nohttp.RequestMethod;
+import com.yanzhenjie.nohttp.rest.Response;
+
+import java.util.HashMap;
+
+/**
+ * Created by shijiwei on 2018/10/19.
+ *
+ * @Desc:
+ */
+public class QALibFragment extends BaseFragment implements View.OnClickListener {
+
+    private static final String TAG = "QALibFragment";
+    public static final String KEY_COUNT = "count";
+
+    private View btnComonQA;
+    private View btnSns;
+    private TextView tvCommonQACount;
+    private TextView tvSnsCount;
+
+    private int snsCount = 0;
+    private int commonqaCount = 0;
+
+
+    @Override
+    public int getLayoutResId() {
+        return R.layout.fragment_qalib;
+    }
+
+    @Override
+    public void initialData(Bundle savedInstanceState) {
+
+    }
+
+    @Override
+    public void initialView(View view) {
+        btnComonQA = view.findViewById(R.id.btn_common_qa);
+        btnSns = view.findViewById(R.id.btn_sns);
+        tvCommonQACount = view.findViewById(R.id.tv_common_qa_count);
+        tvSnsCount = view.findViewById(R.id.tv_wechat_sns_count);
+        tvCommonQACount.setText("已有 " + commonqaCount + " 条");
+        tvSnsCount.setText("已有 " + snsCount + " 条");
+
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (GlobalVariable.isLogin)
+            getQacount("all");
+
+    }
+
+    @Override
+    public void setUserVisibleHint(boolean isVisibleToUser) {
+        super.setUserVisibleHint(isVisibleToUser);
+        if (isVisibleToUser && GlobalVariable.isLogin) {
+            WXUser inServiceWXUser = GlobalVariable.getInServiceWXUser();
+            if (inServiceWXUser != null) {
+                getQacount("all");
+            } else {
+                commonqaCount = 0;
+                snsCount = 0;
+                tvCommonQACount.setText("已有 " + commonqaCount + " 条");
+                tvSnsCount.setText("已有 " + snsCount + " 条");
+            }
+        }
+
+    }
+
+    @Override
+    public void initialEvn() {
+        btnSns.setOnClickListener(this);
+        btnComonQA.setOnClickListener(this);
+    }
+
+    @Override
+    public void onHttpStart(int what) {
+
+    }
+
+    @Override
+    public void onHttpSucceed(int what, SimpleResult ret, Response response) {
+        super.onHttpSucceed(what, ret, response);
+        if (ret != null) {
+            if (what == URLManager.Get_qa_Count.action) {
+                if (ret.getCode() == SimpleResult.SUCCESS) {
+                    JSONObject data = JSON.parseObject(ret.getData());
+                    int common = data.getInteger("common");
+                    int goods = data.getInteger("goods");
+                    commonqaCount = common;
+                    snsCount = goods;
+                    tvCommonQACount.setText("已有 " + commonqaCount + " 条");
+                    tvSnsCount.setText("已有 " + snsCount + " 条");
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onHttpFailed(int what, SimpleResult ret, Response response) {
+        super.onHttpFailed(what, ret, response);
+        if (ret != null) {
+
+            showMsg(ret.getMessage());
+
+        }
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btn_sns:
+                if (GlobalVariable.checkOperationVaild(getActivity()))
+                    startActivity(SnsqaListActivity.class, snsCount);
+                break;
+            case R.id.btn_common_qa:
+                if (GlobalVariable.checkOperationVaild(getActivity()))
+                    startActivity(CommonqaListActivity.class, commonqaCount);
+                break;
+        }
+    }
+
+    private void startActivity(Class cls, int count) {
+        Intent intent = new Intent(getActivity(), cls);
+        intent.putExtra(KEY_COUNT, count);
+        startActivity(intent);
+    }
+
+    private void getQacount(String question_type) {
+        if (TextUtils.isEmpty(GlobalVariable.sign) || TextUtils.isEmpty(GlobalVariable.tenantID))
+            return;
+        SimpleRequest<SimpleResult> request = new SimpleRequest<SimpleResult>(URLManager.Get_qa_Count.getURL(), URLManager.Get_qa_Count.method, SimpleResult.class);
+        HashMap<String, String> p = new HashMap<>();
+        p.put("question_type", question_type);
+        request.setRequestBodyAsJson(p);
+        addTask2Queue(
+                URLManager.Get_qa_Count.action,
+                request
+        );
+    }
+}

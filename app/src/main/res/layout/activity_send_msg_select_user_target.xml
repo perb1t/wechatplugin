@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/shape_main_frg_background"
+    android:orientation="vertical">
+
+    <com.xiezhiai.wechatplugin.widget.CommonTopBar
+        android:id="@+id/common_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:left_button_text="@string/back"
+        app:left_button_visible="true"
+        app:right_button_visible="false"
+        app:title="@string/send_target" />
+
+
+    <LinearLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="75dp"
+            android:layout_margin="10dp"
+            android:background="@drawable/shape_white_corner_background"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/cb_all_friend"
+                android:layout_width="22dp"
+                android:layout_height="15dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20dp"
+                android:background="@drawable/selector_group_helper_check1"
+                android:button="@null" />
+
+            <LinearLayout
+                android:id="@+id/layout_all_friend"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="19dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="全部好友"
+                    android:textColor="@color/color_000000"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="发送给所有微信好友"
+                    android:textColor="@color/txt_999999"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:background="@drawable/shape_white_corner_background"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="73dp"
+                android:orientation="horizontal">
+
+                <CheckBox
+                    android:id="@+id/cb_part_friend"
+                    android:layout_width="22dp"
+                    android:layout_height="15dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="20dp"
+                    android:background="@drawable/selector_group_helper_check1"
+                    android:button="@null" />
+
+                <LinearLayout
+                    android:id="@+id/layout_part_friend"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="19dp"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="部分好友"
+                        android:textColor="@color/color_000000"
+                        android:textSize="17sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="发送给所选标签分组微信好友（可多选）"
+                        android:textColor="@color/txt_999999"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginLeft="61dp"
+                android:background="#EAEBED" />
+
+            <ScrollView
+                android:layout_marginTop="17dp"
+                android:id="@+id/scroll_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:overScrollMode="never"
+                android:scrollbars="none">
+
+                <com.xiezhiai.wechatplugin.widget.LabelWall
+                    android:id="@+id/label_wall"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="61dp"
+                    android:paddingRight="10dp" />
+            </ScrollView>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+
+    <Button
+        android:id="@+id/btn_send"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="40dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/shape_send_msg_button_background"
+        android:gravity="center"
+        android:text="@string/send_msg"
+        android:textColor="@color/white" />
+
+
+</LinearLayout>

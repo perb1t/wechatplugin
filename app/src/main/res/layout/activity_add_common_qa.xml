@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/shape_main_frg_background"
+    android:orientation="vertical">
+
+    <com.xiezhiai.wechatplugin.widget.CommonTopBar
+        android:id="@+id/common_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:left_button_text="取消"
+        app:left_button_visible="true"
+        app:title="编辑问答" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="39dp"
+            android:gravity="center_vertical"
+            android:text="问题"
+            android:textColor="@color/txt_333333" />
+
+        <EditText
+            android:id="@+id/et_question"
+            android:layout_width="match_parent"
+            android:layout_height="105dp"
+            android:background="@drawable/shape_white_corner_background"
+            android:gravity="top|left"
+            android:hint="请输入问题"
+            android:padding="10dp"
+            android:textColor="@color/color_666666"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="39dp"
+            android:gravity="center_vertical"
+            android:text="答案"
+            android:textColor="@color/txt_333333" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/shape_white_corner_background"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <EditText
+                android:id="@+id/et_answer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/white"
+                android:gravity="top|left"
+                android:hint="请输入该问题的答案，可以添加配图哦~"
+                android:textColor="@color/color_666666"
+                android:textSize="14sp" />
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/lv_add_photo"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="5dp"
+                android:overScrollMode="never"
+                android:scrollbars="none"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/shape_white_corner_background"
+            android:orientation="horizontal"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical|left"
+                android:text="是否开启该条件问题?"
+                android:textColor="@color/txt_333333"
+                android:textSize="14sp" />
+
+            <CheckBox
+                android:id="@+id/cb_isOpen"
+                android:layout_width="58dp"
+                android:layout_height="25dp"
+                android:background="@drawable/selector_setting_check_background"
+                android:button="@null"
+                android:checked="true" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_send"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="50dp"
+            android:background="@drawable/shape_send_msg_button_background"
+            android:gravity="center"
+            android:text="保存"
+            android:textColor="@color/white"
+            android:textSize="16sp" />
+
+
+    </LinearLayout>
+
+
+</LinearLayout>

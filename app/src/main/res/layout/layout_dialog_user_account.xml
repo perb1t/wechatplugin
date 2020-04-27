@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="335dp"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:background="@drawable/shape_white_corner_background"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="175dp"
+        android:background="@mipmap/bg_dialog_my_info">
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="18dp"
+            android:text="| 绑定微信账号"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
+
+        <com.xiezhiai.wechatplugin.widget.CircleImageView
+            android:id="@+id/iv_wechat_avatar"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="39dp"
+            android:src="@mipmap/test"
+            app:border_width="2dp" />
+
+        <TextView
+            android:id="@+id/tv_wechat_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/iv_wechat_avatar"
+            android:layout_centerHorizontal="true"
+            android:layout_margin="13dp"
+            android:text="深秋晚风"
+            android:textColor="@color/white"
+            android:textSize="19sp" />
+
+        <ImageView
+            android:id="@+id/btn_exit"
+            android:layout_width="17dp"
+            android:layout_height="17dp"
+            android:layout_alignParentRight="true"
+            android:layout_margin="15dp"
+            android:src="@mipmap/icon_dialog_cancel" />
+
+    </RelativeLayout>
+
+    <!--绑定账号提示语-->
+    <LinearLayout
+        android:id="@+id/layout_bind"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="22dp"
+        android:paddingTop="30dp"
+        android:paddingRight="22dp"
+        android:paddingBottom="20dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/iv_wechat_avatar"
+            android:layout_centerHorizontal="true"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/bind_wechat_tips_1"
+            android:textColor="@color/color_000000"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/iv_wechat_avatar"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="24dp"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/bind_wechat_tips_2"
+            android:textColor="@color/txt_999999"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/iv_wechat_avatar"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="14dp"
+            android:lineSpacingExtra="8dp"
+            android:text="@string/bind_wechat_tips_3"
+            android:textColor="@color/txt_999999"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!--解除绑定提示语-->
+    <TextView
+        android:id="@+id/layout_unbind"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_below="@+id/iv_wechat_avatar"
+        android:layout_centerHorizontal="true"
+        android:gravity="center_vertical"
+        android:lineSpacingExtra="4dp"
+        android:paddingLeft="22dp"
+        android:text="@string/unbind_wechat_tips_"
+        android:textColor="@color/color_000000"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!--绑定成功提示语-->
+    <LinearLayout
+        android:id="@+id/layout_bind_success"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="22dp"
+        android:paddingTop="30dp"
+        android:paddingRight="22dp"
+        android:paddingBottom="25dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/iv_wechat_avatar"
+            android:layout_centerHorizontal="true"
+            android:lineSpacingExtra="8dp"
+            android:text="@string/bind_wechat_success_tips_1"
+            android:textColor="#F76260"
+            android:textSize="17sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/iv_wechat_avatar"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="30dp"
+            android:lineSpacingExtra="8dp"
+            android:text="@string/bind_wechat_success_tips_2"
+            android:textColor="#626262"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#cfcfcf" />
+
+
+    <!--底部按钮-->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_cancel"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="取消"
+                android:textColor="@color/txt_999999"
+                android:textSize="17sp"
+                android:visibility="gone" />
+
+
+            <TextView
+                android:id="@+id/btn_confirm"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="知道了"
+                android:textColor="#007AFF"
+                android:textSize="17sp" />
+
+        </LinearLayout>
+
+
+    </FrameLayout>
+
+
+</LinearLayout>

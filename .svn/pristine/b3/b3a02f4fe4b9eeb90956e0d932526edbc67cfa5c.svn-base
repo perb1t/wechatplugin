@@ -1,0 +1,214 @@
+package com.xiezhiai.wechatplugin.ui.frg;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+
+import com.xiezhiai.wechatplugin.R;
+import com.xiezhiai.wechatplugin.adapter.SendMsgSelectGroupAdapter;
+import com.xiezhiai.wechatplugin.core.SettingConfig;
+import com.xiezhiai.wechatplugin.model.wechat.ChatRoom;
+import com.xiezhiai.wechatplugin.receiver.CommandReceiver;
+import com.xiezhiai.wechatplugin.receiver.HookDataReceiver;
+import com.xiezhiai.wechatplugin.ui.base.BaseFragment;
+import com.xiezhiai.wechatplugin.ui.interf.PluginUIHooker;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+import com.yanzhenjie.nohttp.rest.Response;
+
+import java.util.ArrayList;
+
+/**
+ * Created by shijiwei on 2018/10/20.
+ *
+ * @Desc:
+ */
+public class GroupReplySettingFragment extends BaseFragment implements View.OnClickListener, CompoundButton.OnCheckedChangeListener,
+        SendMsgSelectGroupAdapter.SelectChatroomListener, PluginUIHooker {
+
+    private ListView lvChatroom;
+    private SendMsgSelectGroupAdapter adapter;
+
+    private CheckBox cbAutoReplyChatroom;
+    private CheckBox cbChattingAutoReplyChatroom;
+    private CheckBox cbAllChatrom;
+    private CheckBox cbPartChatroom;
+    private View chattingSettingLayer;
+    private LinearLayout layoutAllChatroom;
+    private LinearLayout layoutPartChatroom;
+
+    private ArrayList<ChatRoom> allChatRooms = new ArrayList<>();
+
+    @Override
+    public int getLayoutResId() {
+        return R.layout.fragment_group_reply_setting;
+    }
+
+    @Override
+    public void initialData(Bundle savedInstanceState) {
+        HookDataReceiver.registerPluginUIHooker(this);
+    }
+
+    @Override
+    public void initialView(View view) {
+
+        cbAutoReplyChatroom = view.findViewById(R.id.cb_auto_reply_chatroom);
+        cbChattingAutoReplyChatroom = view.findViewById(R.id.cb_chatting_auto_reply_chatroom);
+        cbAllChatrom = view.findViewById(R.id.cb_all_chatroom);
+        cbPartChatroom = view.findViewById(R.id.cb_part_chatroom);
+        chattingSettingLayer = view.findViewById(R.id.chatting_setting_layer);
+        layoutAllChatroom = view.findViewById(R.id.layout_all_chatroom);
+        layoutPartChatroom = view.findViewById(R.id.layout_part_chatroom);
+
+        lvChatroom = view.findViewById(R.id.lv_chatroom);
+        adapter = new SendMsgSelectGroupAdapter(getActivity(), allChatRooms);
+        lvChatroom.setAdapter(adapter);
+    }
+
+    @Override
+    public void initialEvn() {
+        cbAutoReplyChatroom.setOnCheckedChangeListener(this);
+        cbChattingAutoReplyChatroom.setOnCheckedChangeListener(this);
+        cbAllChatrom.setOnCheckedChangeListener(this);
+        cbPartChatroom.setOnCheckedChangeListener(this);
+        layoutAllChatroom.setOnClickListener(this);
+        layoutPartChatroom.setOnClickListener(this);
+        adapter.setSelectChatroomListener(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        initUIPernmission(SettingConfig.permission);
+        loadWechatChatromms();
+        adapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public void onHttpStart(int what) {
+
+    }
+
+    @Override
+    public void onHttpSucceed(int what, Response response) {
+
+    }
+
+    @Override
+    public void onHttpFinish(int what) {
+
+    }
+
+    @Override
+    public void onAllUnselected(boolean all) {
+        cbPartChatroom.setChecked(!all);
+        selectAutoReplyChatrooms(cbAllChatrom.isChecked());
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.layout_all_chatroom:
+                cbAllChatrom.setChecked(true);
+                cbPartChatroom.setChecked(false);
+                adapter.cancelSelected();
+                break;
+            case R.id.layout_part_chatroom:
+                cbAllChatrom.setChecked(false);
+                cbPartChatroom.setChecked(true);
+                break;
+        }
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+        switch (buttonView.getId()) {
+            case R.id.cb_auto_reply_chatroom:
+                chattingSettingLayer.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                if (!isChecked) cbChattingAutoReplyChatroom.setChecked(false);
+                SettingConfig.setPermission(getActivity(), SettingConfig.KEY_CHATROOM_AUTO_REPLY, isChecked);
+                break;
+            case R.id.cb_chatting_auto_reply_chatroom:
+                SettingConfig.setPermission(getActivity(), SettingConfig.KEY_CHATROOM_CHATTING_AUTO_REPLY, isChecked);
+                break;
+            case R.id.cb_all_chatroom:
+                if (isChecked) {
+                    cbPartChatroom.setChecked(false);
+                }
+                selectAutoReplyChatrooms(isChecked);
+                break;
+            case R.id.cb_part_chatroom:
+                if (isChecked) {
+                    cbAllChatrom.setChecked(false);
+                } else {
+                    adapter.cancelSelected();
+                }
+                selectAutoReplyChatrooms(false);
+                break;
+        }
+    }
+
+
+    /**
+     * 初始化界面权限
+     *
+     * @param permission
+     */
+    private void initUIPernmission(SettingConfig.Permission permission) {
+        cbAutoReplyChatroom.setChecked(permission.chatroomAutoReply);
+        cbChattingAutoReplyChatroom.setChecked(permission.chatroomChatAutoReply);
+    }
+
+    /**
+     * 加载微信的聊天组
+     */
+    private void loadWechatChatromms() {
+        for (int i = 0; i < HookDataReceiver.loginedWechatChatRooms.size(); i++) {
+            ChatRoom entity = HookDataReceiver.loginedWechatChatRooms.get(i);
+            boolean contains = false;
+            for (int j = 0; j < allChatRooms.size(); j++) {
+                if (allChatRooms.get(j).getId().equals(entity.getId())) {
+                    allChatRooms.get(j).setName(entity.getName());
+                    contains = true;
+                    break;
+                }
+            }
+            if (!contains) {
+                allChatRooms.add(entity);
+            }
+        }
+        selectAutoReplyChatrooms(cbAllChatrom.isChecked());
+    }
+
+    /**
+     * 选择自动回复的聊天组
+     *
+     * @param all
+     */
+    private void selectAutoReplyChatrooms(boolean all) {
+        ArrayList<ChatRoom> select = new ArrayList<>();
+        for (ChatRoom room : allChatRooms) {
+            if (room.isChecked()) select.add(room);
+        }
+        Intent intent = new Intent(CommandReceiver.ACTION_SELECT_AUTO_REPLY_CHATROOM);
+        intent.putExtra(CommandReceiver.KEY_SELECT_ALL_AUTO_REPLY_CHATROOM, all);
+        intent.putExtra(CommandReceiver.KEY_SELECT_AUTO_REPLY_CHATROOM, select);
+        getActivity().sendBroadcast(intent);
+    }
+
+    @Override
+    public void onWechatSwitchAccount() {
+        allChatRooms.clear();
+        selectAutoReplyChatrooms(false);
+    }
+
+    @Override
+    public void onPluginSwichInServiceWecahtAccount() {
+        allChatRooms.clear();
+        selectAutoReplyChatrooms(false);
+    }
+}

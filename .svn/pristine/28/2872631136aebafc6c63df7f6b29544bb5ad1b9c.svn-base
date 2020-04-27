@@ -1,0 +1,467 @@
+package com.xiezhiai.wechatplugin.hooker;
+
+
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
+import android.text.SpannableString;
+import android.text.TextUtils;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.func.transfer.PluginHandler;
+import com.xiezhiai.wechatplugin.func.transfer.PluginMessasge;
+import com.xiezhiai.wechatplugin.func.transfer.PluginServer;
+import com.xiezhiai.wechatplugin.model.wechat.ChatRoom;
+import com.xiezhiai.wechatplugin.model.wechat.ContactLabel;
+import com.xiezhiai.wechatplugin.model.wechat.UserInfo;
+import com.xiezhiai.wechatplugin.utils.AppUtil;
+import com.xiezhiai.wechatplugin.utils.BitmapUtil;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+import static com.xiezhiai.wechatplugin.utils.LogUtil.log;
+import static de.robv.android.xposed.XposedHelpers.callMethod;
+
+/**
+ * Created by shijiwei on 2018/10/15.
+ *
+ * @Desc: adapter:
+ * - contcts : | com.tencent.mm.ui.contact.a , com.tencent.mm.ui.f
+ * <p>
+ * - conversations | com.tencent.mm.ui.conversation.g  , com.tencent.mm.ui.f
+ */
+public class ContactsHooker implements IHooker {
+
+    private static Object conversationWithCacheAdapter;
+    private static Object addressAdapter;
+    private static Class<?> clsWxAvatarLoader;
+    private static boolean hasLoadContacts = false;
+    private static boolean hasLoadContactsLabels = false;
+    private static int conversationSize = 0;
+
+    public static final int GET_CONTACTS = 100;
+    public static final int GET_CONTACTSLABELS = 101;
+    public static final int GET_CHATROOMS = 102;
+
+    private static ExecutorService hookTaskPool = Executors.newSingleThreadExecutor();
+    public static Handler hookTaskHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case GET_CONTACTS:
+                    hookTaskPool.execute(GetContactsRunnable);
+                    break;
+                case GET_CONTACTSLABELS:
+                    hookTaskPool.execute(GetContactsLabelsRunnable);
+                    break;
+                case GET_CHATROOMS:
+                    hookTaskPool.execute(GetChatroomsRunnable);
+                    break;
+
+            }
+        }
+    };
+
+
+    @Override
+    public void hook(XC_LoadPackage.LoadPackageParam lpparam) {
+
+        clsWxAvatarLoader = XposedHelpers.findClass("com.tencent.mm.ab.c", lpparam.classLoader);
+        XposedHelpers.findAndHookMethod(clsWxAvatarLoader, "a",
+                String.class, boolean.class, int.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        try {
+                            String wxid = (String) param.args[0];
+                            boolean isHD = (boolean) param.args[1];
+                            if (wxid.equals(Config.xWechat.loginUser.getUserName()) && !isHD) {
+                                Bitmap avatar = (Bitmap) param.getResult();
+                                String path = Environment.getExternalStorageDirectory() + Config.EXTERNAL_DIR + "/" + wxid + ".jpg";
+                                saveAvatar2SDCard(avatar, path);
+                            }
+                        } catch (Exception e) {
+
+                        }
+                    }
+                });
+
+        XposedBridge.hookAllMethods(Config.xWechat.ConversationWithCacheAdapter, "notifyDataSetChanged", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(final MethodHookParam param) throws Throwable {
+
+                LogUtil.log("微信通讯 - 会话列表刷新");
+                conversationWithCacheAdapter = param.thisObject;
+                getChatrooms();
+            }
+        });
+
+        XposedBridge.hookAllMethods(Config.xWechat.AddressAdapter, "notifyDataSetChanged", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(final MethodHookParam param) throws Throwable {
+                LogUtil.e("微信通讯 - 通讯录列表刷新");
+                addressAdapter = param.thisObject;
+                getContacts();
+            }
+        });
+
+        XposedBridge.hookAllMethods(Config.xWechat.SQLiteDatabase, "insert", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+
+                LogUtil.e("微信数据库增删改 - 增 table：" + param.args[0]);
+                if (param.args[0].equals("ContactLabel")) {
+                    /* 查询好友标签 */
+                    getContactsLabels();
+                }
+
+                if (param.args[0].equals("rconversation")) {
+                    if (conversationWithCacheAdapter != null)
+                        getChatrooms();
+                }
+
+            }
+        });
+
+
+        XposedBridge.hookAllMethods(Config.xWechat.SQLiteDatabase, "updateWithOnConflict", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                super.afterHookedMethod(param);
+
+                LogUtil.e("微信数据库增删改 - 改 table：" + param.args[0]);
+                if (param.args[0].equals("ContactLabel")) {
+                    /* 查询好友标签 */
+                    getContactsLabels();
+                }
+            }
+        });
+
+
+        XposedBridge.hookAllMethods(Config.xWechat.SQLiteDatabase, "delete", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                super.afterHookedMethod(param);
+                LogUtil.e("微信数据库增删改 - 删 table：" + param.args[0]);
+                if (param.args[0].equals("ContactLabel")) {
+                    /* 查询好友标签 */
+                    getContactsLabels();
+                }
+            }
+        });
+
+        XposedBridge.hookAllMethods(Config.xWechat.SQLiteDatabase, "query", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                super.afterHookedMethod(param);
+                LogUtil.e("微信数据库增删改 -  查 table：" + param.args[0]);
+            }
+        });
+    }
+
+    /**
+     * 获取当前登陆账号的通讯录
+     *
+     * @return
+     */
+    public static ArrayList<UserInfo> getLoginContacts(Object contactAdapter) {
+        ArrayList<UserInfo> contacts = new ArrayList<>();
+        try {
+            int count = (int) XposedHelpers.callMethod(contactAdapter, "getCount");
+            for (int i = 0; i < count; i++) {
+                Object contact = XposedHelpers.callMethod(contactAdapter, "Eg", i);
+                Class<?> cls = contact.getClass();
+                Field[] declaredFields = cls.getDeclaredFields();
+                String alias = null;
+                String conRemark = null;
+                String nickname = null;
+                String username = null;
+                for (Field field : declaredFields) {
+                    field.setAccessible(true);
+                    if (field.getName().equals("field_alias"))
+                        alias = (String) field.get(contact);
+                    if (field.getName().equals("field_conRemark"))
+                        conRemark = (String) field.get(contact);
+                    if (field.getName().equals("field_nickname"))
+                        nickname = (String) field.get(contact);
+                    if (field.getName().equals("field_username"))
+                        username = (String) field.get(contact);
+                }
+                UserInfo user = new UserInfo(username, nickname, alias, conRemark);
+                user.setLabels(getContactLableByWxid(username));
+                if (user.getUserName().equals("weixin") || user.getUserName().equals("filehelper"))
+                    continue;
+                contacts.add(user);
+                LogUtil.e("微信通讯录 user：" + user);
+            }
+        } catch (Exception e) {
+            LogUtil.e("微信通讯录 user：" + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            return contacts;
+        }
+    }
+
+
+    public static void getAllContacts() {
+        Object db = WechatSQLiteDatabaseHooker.xEnSQLiteDatabase;
+        if (db != null) {
+            try {
+                Object cursor = callMethod(db, "query",
+                        "rcontact",
+                        null, "type != ? and type != ? and type != ? and verifyFlag = ?  and username like 'wxid_%' and username not like '%@chatroom' ", new String[]{"2", "33", "4", "0"},
+                        null, null, null, null);
+                String[] columnNames = (String[]) callMethod(cursor, "getColumnNames");
+                int count = (int) callMethod(cursor, "getCount");
+                while ((boolean) callMethod(cursor, "moveToNext")) {
+                    String username = (String) callMethod(cursor, "getString", 0);
+                    String alias = (String) callMethod(cursor, "getString", 1);
+                    String nickname = (String) callMethod(cursor, "getString", 4);
+                    String type = (String) callMethod(cursor, "getString", 8);
+                    String chatroomFlag = (String) callMethod(cursor, "getString", 16);
+                    String deleteFlag = (String) callMethod(cursor, "getString", 17);
+                    String contactLabelIds = (String) callMethod(cursor, "getString", 18);
+                    log("微信通讯录： |alias: " + alias + "   |nickname: " + nickname
+                            + "   |username: " + username + "  |type: " + type
+                            + "   |deleteFlag: " + deleteFlag
+                            + "   |chatroomFlag: " + chatroomFlag
+                            + "   |contactLabelIds: " + contactLabelIds
+                    );
+                }
+            } catch (Exception e) {
+                log("微信通讯录查询失败 ：" + e.getMessage());
+            }
+        }
+
+    }
+
+
+    /**
+     * 根据好友的wx_id 查询所属好友标签
+     *
+     * @param userName
+     * @return
+     */
+    public static String getContactLableByWxid(String userName) {
+        Object db = WechatSQLiteDatabaseHooker.xEnSQLiteDatabase;
+        if (db != null) {
+            String label = null;
+            try {
+                Object cursor = callMethod(db, "query",
+                        "rcontact",
+                        null, "username = ?", new String[]{userName},
+                        null, null, null, null);
+                while ((boolean) callMethod(cursor, "moveToNext")) {
+                    label = (String) callMethod(cursor, "getString", 18);
+                }
+            } catch (Exception e) {
+                log("根据好友的wx_id 查询所属好友标签 查询失败 ：" + e.getMessage());
+            } finally {
+                return label;
+            }
+        }
+        return null;
+    }
+
+
+    /**
+     * 获取微信好友label列表
+     *
+     * @return
+     */
+    public static ArrayList<ContactLabel> getContactLables() {
+        ArrayList<ContactLabel> labels = new ArrayList<>();
+        Object db = WechatSQLiteDatabaseHooker.xEnSQLiteDatabase;
+
+        try {
+            Object cursor = callMethod(db, "query",
+                    "ContactLabel",
+                    null, null, null,
+                    null, null, null, null);
+            while ((boolean) callMethod(cursor, "moveToNext")) {
+                ContactLabel label = new ContactLabel(
+                        (String) callMethod(cursor, "getString", 0),
+                        (String) callMethod(cursor, "getString", 1),
+                        (String) callMethod(cursor, "getString", 2),
+                        (String) callMethod(cursor, "getString", 3),
+                        (String) callMethod(cursor, "getString", 4),
+                        (String) callMethod(cursor, "getString", 5)
+                );
+                labels.add(label);
+                LogUtil.log("通讯录标签 ：" + label.getLabelName());
+            }
+        } catch (Exception e) {
+
+        } finally {
+            return labels;
+        }
+    }
+
+    /**
+     * 根据微信id获取头像
+     *
+     * @param wxId
+     * @param isHDImage
+     */
+    public static void getAvatar(String wxId, boolean isHDImage) {
+        if (clsWxAvatarLoader == null) return;
+        final Bitmap avatar = (Bitmap) XposedHelpers.callStaticMethod(clsWxAvatarLoader, "a", wxId, isHDImage);
+        final String path = Environment.getExternalStorageDirectory() + Config.EXTERNAL_DIR + "/" + wxId + ".jpg";
+        saveAvatar2SDCard(avatar, path);
+    }
+
+    /**
+     * 图片保存到sdcard
+     *
+     * @param avatar
+     * @param path
+     */
+    public static void saveAvatar2SDCard(final Bitmap avatar, final String path) {
+        if (avatar != null && !TextUtils.isEmpty(path)) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    BitmapUtil.Bitmap2File(avatar, path);
+                }
+            }).start();
+        }
+    }
+
+
+    /**
+     * 获取通讯录列表
+     */
+    static Runnable GetContactsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (addressAdapter != null) {
+                ArrayList<UserInfo> contacts = getLoginContacts(addressAdapter);
+                PluginHandler.updateContacts(contacts);
+                if (contacts != null && contacts.size() != 0) {
+                    hasLoadContacts = true;
+                }
+            }
+        }
+    };
+
+
+    /**
+     * 获取聊天室列表
+     */
+    static Runnable GetChatroomsRunnable = new Runnable() {
+        @Override
+        public void run() {
+
+            ArrayList<ChatRoom> chatRooms = new ArrayList<>();
+            try {
+                int count = (int) XposedHelpers.callMethod(conversationWithCacheAdapter, "getCount");
+                if (conversationSize != 0 && count == conversationSize) {
+                    return;
+                }
+                conversationSize = count;
+                for (int i = 0; i < count; i++) {
+                    Object o = XposedHelpers.callMethod(conversationWithCacheAdapter, "Eg", i);
+                    JSONObject conversation = (JSONObject) JSON.parse(JSON.toJSONString(o));
+                    String id = conversation.getString("field_username");
+                    if (!TextUtils.isEmpty(id) && id.endsWith(AutoReplyHooker.CHAT_ROOM_CONVERSATION)) {
+                        Object o2 = XposedHelpers.callMethod(conversationWithCacheAdapter, "i", o);
+                        Class<?> aClass = o2.getClass();
+                        Field f = aClass.getDeclaredField("nickName");
+                        f.setAccessible(true);
+                        SpannableString nickNameSpan = (SpannableString) f.get(o2);
+                        ChatRoom room = new ChatRoom(nickNameSpan.toString(), id);
+                        chatRooms.add(room);
+                        LogUtil.e("微信通讯 - 聊天室：" + room.getName());
+
+                    }
+
+                }
+
+                PluginHandler.updateChatrooms(chatRooms);
+
+                /* 查询好友标签 */
+                if (!hasLoadContactsLabels) {
+                    ArrayList<ContactLabel> contactLables = getContactLables();
+                    PluginHandler.updateContactsLabels(contactLables);
+                    hasLoadContactsLabels = true;
+                }
+
+
+                if (!hasLoadContacts) {
+                    /* 查询通讯录 */
+                    Object adapter = XposedHelpers.newInstance(Config.xWechat.AddressAdapter, AppUtil.getSystemContext(), "@all.contact.without.chatroom", null, 2, true);
+//                    if (addressAdapter == null) {
+                    ArrayList<UserInfo> contacts = getLoginContacts(adapter);
+                    PluginHandler.updateContacts(contacts);
+                    if (contacts != null && contacts.size() != 0) {
+                        hasLoadContacts = true;
+                    }
+//                    }
+                }
+
+            } catch (Exception e) {
+
+            } finally {
+
+            }
+        }
+    };
+
+    /**
+     * 获取好友标签列表
+     */
+    static Runnable GetContactsLabelsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            ArrayList<ContactLabel> contactLables = getContactLables();
+            PluginHandler.updateContactsLabels(contactLables);
+        }
+    };
+
+    /**
+     * 获取任务执行延时
+     *
+     * @return
+     */
+    public static long getExecTaskDelayTime() {
+        return 200;
+    }
+
+    public void getContacts() {
+        hookTaskHandler.removeMessages(GET_CONTACTS);
+        hookTaskHandler.sendEmptyMessageDelayed(GET_CONTACTS, getExecTaskDelayTime());
+    }
+
+    public void getContactsLabels() {
+        hookTaskHandler.removeMessages(GET_CONTACTSLABELS);
+        hookTaskHandler.sendEmptyMessageDelayed(GET_CONTACTSLABELS, getExecTaskDelayTime());
+    }
+
+    public void getChatrooms() {
+        hookTaskHandler.removeMessages(GET_CHATROOMS);
+        hookTaskHandler.sendEmptyMessageDelayed(GET_CHATROOMS, getExecTaskDelayTime());
+    }
+
+    /**
+     * 重置状态
+     */
+    public static void resetFlag() {
+        hasLoadContacts = false;
+        hasLoadContactsLabels = false;
+        conversationSize = 0;
+    }
+}

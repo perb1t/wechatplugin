@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal">
+
+    <android.support.v7.widget.AppCompatCheckBox
+        android:id="@+id/cb_room"
+        android:layout_width="235dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="13dp"
+        android:background="@drawable/selector_send_target_check_background"
+        android:button="@null"
+        android:checked="true"
+        android:gravity="center"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:textColor="@color/selector_color_send_target_check"
+        android:textSize="13sp" />
+
+</LinearLayout>

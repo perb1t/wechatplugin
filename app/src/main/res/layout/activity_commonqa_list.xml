@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/shape_main_frg_background"
+    android:orientation="vertical">
+
+    <com.xiezhiai.wechatplugin.widget.CommonTopBar
+        android:id="@+id/common_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:left_button_text="@string/back"
+        app:left_button_visible="true"
+        app:right_button_text="@string/edit"
+        app:title="@string/common_qa" />
+
+    <RelativeLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="10dp">
+
+        <!--Empty layer-->
+        <LinearLayout
+            android:visibility="gone"
+            android:id="@+id/empty_layer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/shape_white_corner_background"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_marginTop="80dp"
+                android:src="@mipmap/icon_empty" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:text="暂无数据"
+                android:textColor="#4D70F1"
+                android:textSize="17sp" />
+
+            <TextView
+                android:layout_width="230dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:gravity="center"
+                android:text="您可以录入一些客户最常问到的问题，小晓机器人会为您自动进行回复哦！"
+                android:textColor="@color/txt_999999"
+                android:textSize="13sp" />
+
+            <FrameLayout
+                android:id="@+id/btn_add_commonqa"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginLeft="33dp"
+                android:layout_marginTop="60dp"
+                android:layout_marginRight="33dp"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/shape_send_msg_button_background"
+                android:gravity="center">
+
+                <com.xiezhiai.wechatplugin.widget.TextViewWrapper
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:drawableLeft="@mipmap/icon_add_commonqa"
+                    android:drawablePadding="11dp"
+                    android:gravity="center"
+                    android:text="添加问答"
+                    android:textColor="@color/white"
+                    android:textSize="17sp"
+                    app:drawable_height="18dp"
+                    app:drawable_width="18dp" />
+
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <!-- has Data -->
+
+        <com.scwang.smartrefresh.layout.SmartRefreshLayout
+            android:id="@+id/refresh_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/lv_commonqa"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_above="@+id/layer_buttom_menu"
+                android:layout_marginBottom="2dp"
+                android:overScrollMode="never"
+                android:scrollbars="none"
+                android:visibility="visible" />
+        </com.scwang.smartrefresh.layout.SmartRefreshLayout>
+
+
+        <ImageView
+            android:id="@+id/btn_add_commonqa_ring"
+            android:layout_width="55dp"
+            android:layout_height="55dp"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginRight="15sp"
+            android:layout_marginBottom="19dp"
+            android:src="@drawable/selector_add_commonqa_floatingbutton"
+            android:visibility="gone" />
+
+
+        <!-- 底部功能栏-->
+        <FrameLayout
+            android:id="@+id/layer_buttom_menu"
+            android:layout_width="match_parent"
+            android:layout_height="49dp"
+            android:layout_alignParentBottom="true"
+            android:background="@color/white"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="49dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.xiezhiai.wechatplugin.widget.CheckBoxWrapper
+                    android:id="@+id/cb_check_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="10dp"
+                    android:button="@null"
+                    android:checked="false"
+                    android:drawableLeft="@drawable/selector_group_helper_check"
+                    android:drawablePadding="10dp"
+                    android:gravity="center"
+                    android:text="全选"
+                    android:textColor="@color/color_666666"
+                    android:textSize="14sp"
+                    app:drawable_height="22dp"
+                    app:drawable_width="22dp" />
+
+                <TextView
+                    android:id="@+id/tv_selected_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="30dp"
+                    android:gravity="center"
+                    android:text="已选28条"
+                    android:textSize="12sp" />
+
+
+                <TextView
+                    android:id="@+id/btn_open"
+                    android:layout_width="60dp"
+                    android:layout_height="30dp"
+                    android:layout_marginLeft="10dp"
+                    android:background="@drawable/selector_open"
+                    android:gravity="center"
+                    android:text="开启"
+                    android:textColor="@color/white"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/btn_close"
+                    android:layout_width="60dp"
+                    android:layout_height="30dp"
+                    android:layout_marginLeft="10dp"
+                    android:background="@drawable/selector_close"
+                    android:gravity="center"
+                    android:text="关闭"
+                    android:textColor="@color/white"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/btn_delete"
+                    android:layout_width="60dp"
+                    android:layout_height="30dp"
+                    android:layout_marginLeft="10dp"
+                    android:background="@drawable/selector_delete"
+                    android:gravity="center"
+                    android:text="删除"
+                    android:textColor="@color/white"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="#40cccccc" />
+
+        </FrameLayout>
+
+
+    </RelativeLayout>
+
+
+</LinearLayout>

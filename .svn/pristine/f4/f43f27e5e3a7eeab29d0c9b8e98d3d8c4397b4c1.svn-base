@@ -1,0 +1,266 @@
+//package com.xiezhiai.wechatplugin.receiver;
+//
+//import android.Manifest;
+//import android.content.BroadcastReceiver;
+//import android.content.Context;
+//import android.content.Intent;
+//import android.content.SharedPreferences;
+//
+//import com.alibaba.fastjson.JSON;
+//import com.xiezhiai.wechatplugin.core.GlobalVariable;
+//import com.xiezhiai.wechatplugin.core.SettingConfig;
+//import com.xiezhiai.wechatplugin.hooker.SnsHooker;
+//import com.xiezhiai.wechatplugin.model.wechat.ChatRoom;
+//import com.xiezhiai.wechatplugin.model.wechat.ContactLabel;
+//import com.xiezhiai.wechatplugin.model.wechat.UserInfo;
+//import com.xiezhiai.wechatplugin.ui.interf.PluginUIHooker;
+//import com.xiezhiai.wechatplugin.utils.AppUtil;
+//import com.xiezhiai.wechatplugin.utils.LogUtil;
+//import com.xiezhiai.wechatplugin.utils.sns.bean.SnsInfo;
+//import com.xiezhiai.wechatplugin.utils.sns.SnsParser;
+//
+//import java.security.PublicKey;
+//import java.util.ArrayList;
+//import java.util.List;
+//
+///**
+// * Created by shijiwei on 2018/10/25.
+// *
+// * @Desc:
+// */
+//public class HookDataReceiver extends BroadcastReceiver {
+//
+//    private static final String TAG = "HookDataReceiver";
+//
+//    public static final String ACTION_DATA_RECEIVER = "com.xiezhiai.wechatplugin.receiver.HookDataReceiver";
+//    public static final String KEY_DATA_TYPE = "data_type";
+//    public static final String KEY_DATA = "data";
+//
+//    public static final String CONTACTLABEL = "contactLabel";
+//    public static final String CHATROOM = "chatroom";
+//    public static final String LAST_LOGIN_USER = "last_login_user";
+//    public static final String SNS = "sns";
+//    public static final String WECHAT_LOGINED = "wechat_logined";
+//
+//    /* 最后一次登录的微信账号 */
+//    public static final UserInfo wxLastLoginUser = new UserInfo();
+//
+//    public static String WECHAT_CACHE_DIR = "wechat_cache";
+//    public static final String USER_NAME = "user_name";
+//    public static final String USER_NICKNAME = "user_nickname";
+//    public static final String USER_AVATAR = "user_avatar";
+//    public static final String USER_UINENC = "user_uinenc";
+//    public static final String USER_REMARK = "user_remark";
+//    public static final String USER_AVATAR_NAME = "user_avatar_name";
+//
+//    public static final String USER_CHATROOMS = "user_chatroom";
+//    public static final String USER_CONTACTS = "user_contacts";
+//    public static final String USER_CONTACTLABELS = "user_contactlabels";
+//    public static final String USER_SNS = "user_sns";
+//
+//    public static ArrayList<PluginUIHooker> pluginUIHookers = new ArrayList<>();
+//
+//    @Override
+//    public void onReceive(Context context, Intent intent) {
+//        if (intent != null) {
+//            LogUtil.e(TAG + "  Action: " + intent.getStringExtra(KEY_DATA_TYPE));
+//            if (intent.getAction().equals(ACTION_DATA_RECEIVER)) {
+//                if (intent.getStringExtra(KEY_DATA_TYPE).equals(CONTACTLABEL)) {
+//                    ArrayList<ContactLabel> contactLabels = intent.getParcelableArrayListExtra(KEY_DATA);
+//                    updateLoginedWechatContactLabels(context, contactLabels);
+//                } else if (intent.getStringExtra(KEY_DATA_TYPE).equals(CHATROOM)) {
+//                    ArrayList<ChatRoom> chatRooms = intent.getParcelableArrayListExtra(KEY_DATA);
+//                    updateLoginedWechatChatRooms(context, chatRooms);
+//                } else if (intent.getStringExtra(KEY_DATA_TYPE).equals(LAST_LOGIN_USER)) {
+//                    UserInfo user = intent.getParcelableExtra(KEY_DATA);
+//                    if (!WECHAT_CACHE_DIR.equals(user.getUserName())) {
+//                        /* 微信切换账号 */
+//                        for (int i = 0; i < pluginUIHookers.size(); i++) {
+//                            PluginUIHooker pluginUIHooker = pluginUIHookers.get(i);
+//                            if (pluginUIHooker != null) pluginUIHooker.onWechatSwitchAccount();
+//                        }
+//                    }
+//                    WECHAT_CACHE_DIR = user.getUserName();
+//                    wxLastLoginUser.copy(user);
+//                    saveWechatCache(context, wxLastLoginUser);
+//                } else if (intent.getStringExtra(KEY_DATA_TYPE).equals(SNS)) {
+//                    ArrayList<SnsInfo> snsInfos = intent.getParcelableArrayListExtra(KEY_DATA);
+//                    updateLoginWechatSns(context, snsInfos);
+//                } else if (intent.getStringExtra(KEY_DATA_TYPE).equals(WECHAT_LOGINED)) {
+//                    sendAppInfo2Hook(context);
+//                }
+//            }
+//
+//        }
+//
+//    }
+//
+//
+//    /**
+//     * 当前登录的微信账号的好友分类标签组
+//     */
+//    public static List<ContactLabel> loginedWechatContactLabels;
+//
+//    /**
+//     * 当前登录的微信账号的通讯录列表
+//     */
+//    public static List<UserInfo> loginedWechatContacts;
+//
+//    /**
+//     * 当前登录的微信账号的聊天组列表
+//     */
+//    public static List<ChatRoom> loginedWechatChatRooms;
+//
+//
+//    public static List<SnsInfo> loginedWechatSnsInfos;
+//
+//    static {
+//        loginedWechatContactLabels = new ArrayList<>();
+//        loginedWechatContacts = new ArrayList<>();
+//        loginedWechatChatRooms = new ArrayList<>();
+//        loginedWechatSnsInfos = new ArrayList<>();
+//    }
+//
+//
+//    private static <T> void update(List<T> collection, List<T> data) {
+//        if (data == null || data.size() == 0) return;
+//        collection.clear();
+//        collection.addAll(data);
+//    }
+//
+//    /**
+//     * 更新通讯录分类标签
+//     *
+//     * @param contactLabels
+//     */
+//    public static void updateLoginedWechatContactLabels(Context context, List<ContactLabel> contactLabels) {
+//        update(loginedWechatContactLabels, contactLabels);
+//        SharedPreferences sp = context.getSharedPreferences(WECHAT_CACHE_DIR, Context.MODE_PRIVATE);
+//        SharedPreferences.Editor edit = sp.edit();
+//        edit.putString(USER_CONTACTLABELS, JSON.toJSONString(contactLabels));
+//        edit.commit();
+//        LogUtil.e(TAG, " loginedWechatContactLabels size : " + loginedWechatChatRooms.size());
+//    }
+//
+//    /**
+//     * 更新通讯录
+//     *
+//     * @param contacts
+//     */
+//    public static void updateLoginedWechatContacts(Context context, List<UserInfo> contacts) {
+//        update(loginedWechatContacts, contacts);
+//        SharedPreferences sp = context.getSharedPreferences(WECHAT_CACHE_DIR, Context.MODE_PRIVATE);
+//        SharedPreferences.Editor edit = sp.edit();
+//        edit.putString(USER_CONTACTS, JSON.toJSONString(contacts));
+//        edit.commit();
+//        LogUtil.e(TAG, " loginedWechatContacts size : " + loginedWechatChatRooms.size());
+//    }
+//
+//    /**
+//     * 更新聊天室
+//     *
+//     * @param chatRooms
+//     */
+//    public static void updateLoginedWechatChatRooms(Context context, List<ChatRoom> chatRooms) {
+//        update(loginedWechatChatRooms, chatRooms);
+//        SharedPreferences sp = context.getSharedPreferences(WECHAT_CACHE_DIR, Context.MODE_PRIVATE);
+//        SharedPreferences.Editor edit = sp.edit();
+//        edit.putString(USER_CHATROOMS, JSON.toJSONString(chatRooms));
+//        edit.commit();
+//        LogUtil.e(TAG, " loginedWechatChatRooms size : " + loginedWechatChatRooms.size());
+//    }
+//
+//    /**
+//     * 更新朋友圈
+//     *
+//     * @param context
+//     * @param snsInfos
+//     */
+//    public static void updateLoginWechatSns(Context context, List<SnsInfo> snsInfos) {
+//        if (snsInfos == null) return;
+//        loginedWechatSnsInfos.clear();
+//        loginedWechatSnsInfos.addAll(snsInfos);
+//        SharedPreferences sp = context.getSharedPreferences(WECHAT_CACHE_DIR, Context.MODE_PRIVATE);
+//        SharedPreferences.Editor edit = sp.edit();
+//        edit.putString(USER_SNS, JSON.toJSONString(loginedWechatSnsInfos));
+//        edit.commit();
+//    }
+//
+//    public static void resetChatRooms() {
+//        for (int i = 0; i < loginedWechatChatRooms.size(); i++) {
+//            loginedWechatChatRooms.get(i).setChecked(false);
+//        }
+//    }
+//
+//    public static void restContactLables() {
+//        for (int i = 0; i < loginedWechatContactLabels.size(); i++) {
+//            loginedWechatContactLabels.get(i).setChecked(false);
+//        }
+//    }
+//
+//    public static void saveWechatCache(Context context, UserInfo wxLastLoginUser) {
+//        SharedPreferences sp = context.getSharedPreferences(WECHAT_CACHE_DIR, Context.MODE_PRIVATE);
+//        SharedPreferences.Editor edit = sp.edit();
+//        edit.putString(USER_NAME, wxLastLoginUser.getUserName());
+//        edit.putString(USER_NICKNAME, wxLastLoginUser.getUserNickName());
+//        edit.putString(USER_AVATAR, wxLastLoginUser.getAvatarPath());
+//        edit.putString(USER_UINENC, wxLastLoginUser.getUinEnc());
+//        edit.putString(USER_REMARK, wxLastLoginUser.getConRemark());
+//        edit.putString(USER_AVATAR_NAME, wxLastLoginUser.getAvatarName());
+//        edit.commit();
+//    }
+//
+//    public static void loadWechatCache(Context context) {
+//        String defaultValue = "";
+//        SharedPreferences sp = context.getSharedPreferences(SettingConfig.getInServiceWXUserId(context), Context.MODE_PRIVATE);
+////        wxLastLoginUser.setUserName(sp.getString(USER_NAME, defaultValue));
+////        wxLastLoginUser.setUserNickName(sp.getString(USER_NICKNAME, defaultValue));
+////        wxLastLoginUser.setAvatarPath(sp.getString(USER_AVATAR, defaultValue));
+////        wxLastLoginUser.setUinEnc(sp.getString(USER_UINENC, defaultValue));
+////        wxLastLoginUser.setConRemark(sp.getString(USER_REMARK, defaultValue));
+////        wxLastLoginUser.setAvatarName(sp.getString(USER_AVATAR_NAME, defaultValue));
+//
+//        loginedWechatContactLabels.clear();
+//        loginedWechatContactLabels.addAll(JSON.parseArray(sp.getString(USER_CONTACTLABELS, "[]"), ContactLabel.class));
+//
+//        loginedWechatChatRooms.clear();
+//        loginedWechatChatRooms.addAll(JSON.parseArray(sp.getString(USER_CHATROOMS, "[]"), ChatRoom.class));
+//
+//        loginedWechatSnsInfos.clear();
+//        loginedWechatSnsInfos.addAll(JSON.parseArray(sp.getString(USER_SNS, "[]"), SnsInfo.class));
+//    }
+//
+//    /**
+//     * 成功hook微信
+//     */
+//    public static void shotHookWechat(Context context) {
+//        Intent intent = new Intent(ACTION_DATA_RECEIVER);
+//        intent.putExtra(KEY_DATA_TYPE, WECHAT_LOGINED);
+//        context.sendBroadcast(intent);
+//    }
+//
+//    /**
+//     * app当前在状态信息发送给hook
+//     *
+//     * @param context
+//     */
+//    public static void sendAppInfo2Hook(Context context) {
+//        CommandReceiver.updateLoginState(context, GlobalVariable.isLogin);
+//        CommandReceiver.updateSettingConfigInServiceWXUserId(context, SettingConfig.getInServiceWXUserId(context));
+//        CommandReceiver.updateSettingConfigPermission(context, CommandReceiver.KEY_AUTO_REPLY, SettingConfig.permission.autoReply);
+//        CommandReceiver.updateSettingConfigPermission(context, CommandReceiver.KEY_CHATTING_AUTO_REPLY, SettingConfig.permission.chatAutoReply);
+//        CommandReceiver.updateSettingConfigPermission(context, CommandReceiver.KEY_CHATROOM_AUTO_REPLY, SettingConfig.permission.chatroomAutoReply);
+//        CommandReceiver.updateSettingConfigPermission(context, CommandReceiver.KEY_CHATROOM_CHATTING_AUTO_REPLY, SettingConfig.permission.chatroomChatAutoReply);
+//        CommandReceiver.updateSettingConfigPermission(context, CommandReceiver.KEY_AUTO_RECEIVE_LUCKMONEY, SettingConfig.permission.autoReceiveLuckMoney);
+//        CommandReceiver.updateSettingConfigPermission(context, CommandReceiver.KEY_AUTO_RECEIVE_TRANSFER, SettingConfig.permission.autoReceiveTransfer);
+//        CommandReceiver.updateCookieTenantID(context, GlobalVariable.tenantID);
+//        CommandReceiver.updateCookieSign(context, GlobalVariable.sign);
+//        CommandReceiver.updateCookieAppUserID(context, GlobalVariable.userID);
+//    }
+//
+//    public static void registerPluginUIHooker(PluginUIHooker hooker) {
+//        if (!pluginUIHookers.contains(hooker)) {
+//            pluginUIHookers.add(hooker);
+//        }
+//    }
+//}

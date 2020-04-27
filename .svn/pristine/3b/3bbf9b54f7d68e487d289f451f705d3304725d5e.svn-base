@@ -1,0 +1,246 @@
+package com.xiezhiai.wechatplugin.utils.network;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.telephony.TelephonyManager;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Created by shijiwei on 2017/5/9.
+ */
+public class NetworkUtility extends BroadcastReceiver implements NetworkHolder {
+
+    /**
+     * 未知网络
+     */
+    public static final int TYPE_UNKNOW = -2;
+    /**
+     * 暂未连接网络
+     */
+    public static final int TYPE_NONE = -1;
+    /**
+     * 移动网络
+     */
+    public static final int TYPE_MOBILE = 0;
+    /**
+     * WIFI-无线网络
+     */
+    public static final int TYPE_WIFI = 1;
+    /**
+     * 移动2G网络
+     */
+    public static final int TYPE_2G = 2;
+    /**
+     * 移动3G网络
+     */
+    public static final int TYPE_3G = 3;
+    /**
+     * 移动4G网络
+     */
+    public static final int TYPE_4G = 4;
+
+    /**
+     * 网络是否可以
+     */
+    private boolean enable = false;
+    private boolean first = true;
+
+    private ConnectivityManager mConnectivityManager;
+    private TelephonyManager mTelephonyManager;
+    private OnNetworkChangedListener onNetworkChangedListener;
+
+
+    public NetworkUtility(Context context, OnNetworkChangedListener onNetworkChangedListener) {
+        registerReceiver(context);
+        this.onNetworkChangedListener = onNetworkChangedListener;
+        excCheckNetworkState(context);
+    }
+
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
+            if (mConnectivityManager == null || mTelephonyManager == null) {
+                mConnectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            }
+            NetworkInfo activeNetworkInfo = mConnectivityManager.getActiveNetworkInfo();
+            if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
+                onNetworkEvent(activeNetworkInfo);
+            } else {
+                onNetworkEvent(null);
+            }
+        }
+
+    }
+
+    @Override
+    public void onNetworkEvent(NetworkInfo networkInfo) {
+        if (networkInfo != null) {
+            // network is available
+            if (first || (!first && enable != networkInfo.isAvailable())) {
+
+                switch (networkInfo.getType()) {
+                    case TYPE_MOBILE:
+                        if (onNetworkChangedListener != null)
+                            onNetworkChangedListener.onNetworkChanged(getMobileNetworkType(mTelephonyManager.getNetworkType()), networkInfo.isAvailable());
+                        break;
+                    case TYPE_WIFI:
+                        if (onNetworkChangedListener != null)
+                            onNetworkChangedListener.onNetworkChanged(networkInfo.getType(), networkInfo.isAvailable());
+                        break;
+                }
+
+                enable = networkInfo.isAvailable();
+            }
+
+        } else {
+            // network unavailable
+            if (first || (!first && enable)){
+                if (onNetworkChangedListener != null)
+                    onNetworkChangedListener.onNetworkChanged(TYPE_NONE, false);
+                enable = false;
+            }
+        }
+
+        if (first) first = false;
+    }
+
+    /**
+     * 判断移动网络的类型
+     *
+     * @param networkType
+     * @return
+     */
+    private int getMobileNetworkType(int networkType) {
+        switch (networkType) {
+            case TelephonyManager.NETWORK_TYPE_GPRS:
+            case TelephonyManager.NETWORK_TYPE_EDGE:
+            case TelephonyManager.NETWORK_TYPE_CDMA:
+            case TelephonyManager.NETWORK_TYPE_1xRTT:
+            case TelephonyManager.NETWORK_TYPE_IDEN:
+                return TYPE_2G;
+            case TelephonyManager.NETWORK_TYPE_UMTS:
+            case TelephonyManager.NETWORK_TYPE_EVDO_0:
+            case TelephonyManager.NETWORK_TYPE_EVDO_A:
+            case TelephonyManager.NETWORK_TYPE_HSDPA:
+            case TelephonyManager.NETWORK_TYPE_HSUPA:
+            case TelephonyManager.NETWORK_TYPE_HSPA:
+            case TelephonyManager.NETWORK_TYPE_EVDO_B:
+            case TelephonyManager.NETWORK_TYPE_EHRPD:
+            case TelephonyManager.NETWORK_TYPE_HSPAP:
+                return TYPE_3G;
+            case TelephonyManager.NETWORK_TYPE_LTE:
+                return TYPE_4G;
+            default:
+                return TYPE_UNKNOW;
+        }
+    }
+
+    public void registerReceiver(Context context) {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+        context.registerReceiver(this, filter);
+    }
+
+    public void unregisterReceiver(Context context) {
+        context.unregisterReceiver(this);
+    }
+
+    /**
+     * 主动检测网络状态
+     *
+     * @param context
+     */
+    public void excCheckNetworkState(Context context) {
+        onReceive(context, new Intent(ConnectivityManager.CONNECTIVITY_ACTION));
+    }
+    /**
+     * 设备网络切换监听回调
+     */
+    public interface OnNetworkChangedListener {
+        void onNetworkChanged(int type, boolean isAvailable);
+    }
+    public static byte[] getbytes(String path){
+        byte [] array = null;
+        try {
+            URL url = new URL(path);
+
+            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setReadTimeout(3000);
+            if (200 == connection.getResponseCode()) {
+                InputStream inputStream = connection.getInputStream();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                int len = 0;
+                byte [] buffer = new byte[1024];
+                while ((len = inputStream.read(buffer)) != -1) {
+                    baos.write(buffer, 0, len);
+                }
+                array = baos.toByteArray();
+            }
+
+        } catch (MalformedURLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        return array;
+    }
+
+
+
+    //匹配C类地址的IP
+    public static final String regexCIp = "^192\\.168\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)$";
+    //匹配A类地址
+    public static final String regexAIp = "^10\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)$";
+    //匹配B类地址
+    public static final String regexBIp = "^172\\.(1[6-9]|2\\d|3[0-1])\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)\\.(\\d{1}|[1-9]\\d|1\\d{2}|2[0-4]\\d|25\\d)$";
+
+
+    public static String getHost() {
+        String hostIp;
+        Pattern ip = Pattern.compile("(" + regexAIp + ")|" + "(" + regexBIp + ")|" + "(" + regexCIp + ")");
+        Enumeration<NetworkInterface> networkInterfaces = null;
+        try {
+            networkInterfaces = NetworkInterface.getNetworkInterfaces();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+        InetAddress address;
+        while (networkInterfaces.hasMoreElements()) {
+            NetworkInterface networkInterface = networkInterfaces.nextElement();
+            Enumeration<InetAddress> inetAddresses = networkInterface.getInetAddresses();
+            while (inetAddresses.hasMoreElements()) {
+                address = inetAddresses.nextElement();
+                String hostAddress = address.getHostAddress();
+                Matcher matcher = ip.matcher(hostAddress);
+                if (matcher.matches()) {
+                    hostIp = hostAddress;
+                    return hostIp;
+                }
+
+            }
+        }
+        return null;
+    }
+}

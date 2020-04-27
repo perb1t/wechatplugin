@@ -1,0 +1,219 @@
+//package com.xiezhiai.wechatplugin.core;
+//
+//
+//import android.content.Context;
+//import android.content.SharedPreferences;
+//import android.os.Environment;
+//import android.widget.CheckBox;
+//
+//import com.alibaba.fastjson.annotation.JSONField;
+//import com.xiezhiai.wechatplugin.model.xiezhi.WXUser;
+//import com.xiezhiai.wechatplugin.receiver.CommandReceiver;
+//import com.xiezhiai.wechatplugin.ui.aty.MainActivity;
+//import com.xiezhiai.wechatplugin.utils.LogUtil;
+//import com.xiezhiai.wechatplugin.utils.ShellUtils;
+//
+//import java.io.File;
+//
+//import de.robv.android.xposed.XSharedPreferences;
+//
+///**
+// * Created by shijiwei on 2018/10/24.
+// *
+// * @Desc:
+// */
+//public class SettingConfig {
+//
+//    public static final String PACKAGE_NAME = "com.xiezhiai.wechatplugin";
+//    public static final String CACHE_FILE_NAME = "setting_config";
+//
+//    public static final String KEY_AUTO_REPLY = "auto_reply";
+//    public static final String KEY_CHATTING_AUTO_REPLY = "chatting_auto_reply";
+//    public static final String KEY_AUTO_RECEIVE_LUCKMONEY = "auto_receive_luckmoney";
+//    public static final String KEY_AUTO_RECEIVE_TRANSFER = "auto_receive_transfer";
+//    public static final String KEY_CHATROOM_AUTO_REPLY = "chatroom_auto_reply";
+//    public static final String KEY_CHATROOM_CHATTING_AUTO_REPLY = "chatroom_chatting_auto_reply";
+//
+//    public static final String KEY_USER_IN_SERVICE_WECHAT_ID = "user_in_service_wechat_id";
+//
+//    private static SharedPreferences sp = null;
+//    public static Permission permission = new Permission();
+//
+//    public static SharedPreferences getSharedPreferences(Context context) {
+//        if (sp == null) {
+//            sp = context.getSharedPreferences(CACHE_FILE_NAME, Context.MODE_PRIVATE);
+//        }
+//        return sp;
+//    }
+//
+//    /**
+//     * @param context
+//     * @param key
+//     * @param permission
+//     */
+//    public static void setPermission(Context context, String key, boolean permission) {
+//        SharedPreferences.Editor editor = getSharedPreferences(context).edit();
+//        editor.putBoolean(key, permission);
+//        editor.commit();
+//        CommandReceiver.updateSettingConfigPermission(context, key, permission);
+//        SettingConfig.permission.update(key, permission);
+//        updatePermission2Server((MainActivity) context);
+//    }
+//
+//
+//    /**
+//     * 更新当前设置的服务微信号
+//     *
+//     * @param context
+//     * @param id
+//     */
+//    public static void updateInServiceWXUserId(Context context, String id) {
+//        SharedPreferences.Editor editor = getSharedPreferences(context).edit();
+//        editor.putString(KEY_USER_IN_SERVICE_WECHAT_ID, id);
+//        editor.commit();
+//        CommandReceiver.updateSettingConfigInServiceWXUserId(context, id);
+//    }
+//
+//    /**
+//     * 获取当前服务中的微信号
+//     *
+//     * @param context
+//     * @return
+//     */
+//    public static String getInServiceWXUserId(Context context) {
+//        return getSharedPreferences(context).getString(KEY_USER_IN_SERVICE_WECHAT_ID, "");
+//    }
+//
+//    /**
+//     * @param context
+//     * @param key
+//     * @return
+//     */
+//    public static boolean getPermission(Context context, String key) {
+//        return getSharedPreferences(context).getBoolean(key, false);
+//    }
+//
+//
+//    /**
+//     * 权限
+//     */
+//    public static class Permission {
+//
+//        @JSONField(name = "auto_reply")
+//        public boolean autoReply;
+//        @JSONField(name = "chat_auto_reply")
+//        public boolean chatAutoReply;
+//        @JSONField(name = "group_auto_reply")
+//        public boolean chatroomAutoReply;
+//        @JSONField(name = "group_chat_auto_reply")
+//        public boolean chatroomChatAutoReply;
+//        @JSONField(name = "auto_rec_transfer")
+//        public boolean autoReceiveTransfer;
+//        @JSONField(name = "auto_rec_red")
+//        public boolean autoReceiveLuckMoney;
+//
+//        public Permission() {
+//        }
+//
+//        public boolean isAutoReply() {
+//            return autoReply;
+//        }
+//
+//        public void setAutoReply(boolean autoReply) {
+//            this.autoReply = autoReply;
+//        }
+//
+//        public boolean isChatAutoReply() {
+//            return chatAutoReply;
+//        }
+//
+//        public void setChatAutoReply(boolean chatAutoReply) {
+//            this.chatAutoReply = chatAutoReply;
+//        }
+//
+//        public boolean isChatroomAutoReply() {
+//            return chatroomAutoReply;
+//        }
+//
+//        public void setChatroomAutoReply(boolean chatroomAutoReply) {
+//            this.chatroomAutoReply = chatroomAutoReply;
+//        }
+//
+//        public boolean isChatroomChatAutoReply() {
+//            return chatroomChatAutoReply;
+//        }
+//
+//        public void setChatroomChatAutoReply(boolean chatroomChatAutoReply) {
+//            this.chatroomChatAutoReply = chatroomChatAutoReply;
+//        }
+//
+//        public boolean isAutoReceiveTransfer() {
+//            return autoReceiveTransfer;
+//        }
+//
+//        public void setAutoReceiveTransfer(boolean autoReceiveTransfer) {
+//            this.autoReceiveTransfer = autoReceiveTransfer;
+//        }
+//
+//        public boolean isAutoReceiveLuckMoney() {
+//            return autoReceiveLuckMoney;
+//        }
+//
+//        public void setAutoReceiveLuckMoney(boolean autoReceiveLuckMoney) {
+//            this.autoReceiveLuckMoney = autoReceiveLuckMoney;
+//        }
+//
+//        public void copy(Permission permission) {
+//            if (permission == null) return;
+//            this.autoReply = permission.autoReply;
+//            this.chatAutoReply = permission.chatAutoReply;
+//            this.chatroomAutoReply = permission.chatroomAutoReply;
+//            this.chatroomChatAutoReply = permission.chatroomChatAutoReply;
+//            this.autoReceiveTransfer = permission.autoReceiveTransfer;
+//            this.autoReceiveLuckMoney = permission.autoReceiveLuckMoney;
+//        }
+//
+//        public void clear(){
+//            this.autoReply = false;
+//            this.chatAutoReply = false;
+//            this.chatroomAutoReply = false;
+//            this.chatroomChatAutoReply = false;
+//            this.autoReceiveTransfer =  false;
+//            this.autoReceiveLuckMoney =  false;
+//        }
+//
+//        public void update(String key, boolean permisson) {
+//            switch (key) {
+//                case KEY_AUTO_REPLY:
+//                    this.autoReply = permisson;
+//                    break;
+//                case KEY_CHATTING_AUTO_REPLY:
+//                    this.chatAutoReply = permisson;
+//                    break;
+//                case KEY_CHATROOM_AUTO_REPLY:
+//                    this.chatroomAutoReply = permisson;
+//                    break;
+//                case KEY_CHATROOM_CHATTING_AUTO_REPLY:
+//                    this.chatroomChatAutoReply = permisson;
+//                    break;
+//                case KEY_AUTO_RECEIVE_LUCKMONEY:
+//                    this.autoReceiveLuckMoney = permisson;
+//                    break;
+//                case KEY_AUTO_RECEIVE_TRANSFER:
+//                    this.autoReceiveTransfer = permisson;
+//                    break;
+//            }
+//        }
+//    }
+//
+//
+//    public static void updatePermission2Server(MainActivity main) {
+//        if (GlobalVariable.isLogin) {
+//            WXUser inServiceWXUser = GlobalVariable.getInServiceWXUser();
+//            if (inServiceWXUser != null) {
+//                main.updateSettingConfig(inServiceWXUser.getId());
+//            }
+//        }
+//
+//    }
+//}

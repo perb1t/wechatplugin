@@ -1,0 +1,10 @@
+package com.xiezhiai.wechatplugin.func.simulate;
+
+/**
+ * Created by shijiwei on 2018/12/5.
+ *
+ * @Desc:
+ */
+public class IReply {
+
+}

@@ -1,0 +1,166 @@
+package com.xiezhiai.wechatplugin.hooker;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+import java.util.Iterator;
+import java.util.Set;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+/**
+ * Created by shijiwei on 2018/11/21.
+ *
+ * @Desc:
+ */
+public class SendVoiceHooker implements IHooker {
+
+    private static final String TAG = "SendVoiceHooker";
+
+    String class_send_Voice_sdk_b_a = "com.tencent.mm.sdk.b.a";
+    String method_send_Voice_sdk_b_a_m = "m";
+    String class_send_Voice_sdk_b_b = "com.tencent.mm.sdk.b.b";
+
+
+    String class_modelvoice_p = "com.tencent.mm.modelvoice.p";
+    String method_modelvoice_p_ww = "ww";
+
+    String class_modelvoice_q = "com.tencent.mm.modelvoice.q";
+    String method_modelvoice_q_nU = "nU";
+    String method_modelvoice_q_getFullPath = "getFullPath";
+
+    String class_modelvoice_t = "com.tencent.mm.modelvoice.t";
+    String method_modelvoice_t_vU = "vU";
+
+    String class_compatible_util_b = "com.tencent.mm.compatible.util.b";
+    String method_compatible_util_b_zS = "zS";
+
+    String class_ui_chatting_o = "com.tencent.mm.ui.chatting.o"; // dex4
+    String method_ui_chatting_o_ctR = "ctR";
+
+    // 发送音频的关键类
+    String class_e_b_h = "com.tencent.mm.e.b.h";  // dex0
+    String method_e_b_h_cR = "cR";  // start
+    String method_e_b_h_wa = "wa";  // stop
+    Object object_e_b_h;
+
+
+
+    @Override
+    public void hook(XC_LoadPackage.LoadPackageParam lpparam) {
+
+        Class a = XposedHelpers.findClass(class_send_Voice_sdk_b_a, lpparam.classLoader);
+        final Class b = XposedHelpers.findClass(class_send_Voice_sdk_b_b, lpparam.classLoader);
+//        XposedHelpers.findAndHookMethod(a, method_send_Voice_sdk_b_a_m, b, new XC_MethodHook() {
+//
+//                    @Override
+//                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                        super.afterHookedMethod(param);
+//                        LogUtil.e("DebugTracker=========================== afterHookedMethod ==========================");
+//                        Object arg = param.args[0];
+//                        DebugTracker.printObect(arg);
+//                    }
+//                }
+//        );
+
+
+        Class<?> modelvoice_p = XposedHelpers.findClass(class_modelvoice_p, lpparam.classLoader);
+
+        XposedHelpers.findAndHookMethod(modelvoice_p, method_modelvoice_p_ww, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                StringBuilder builder = new StringBuilder();
+                ContentValues contentValues = (ContentValues) param.getResult();
+                Set<String> keySet = contentValues.keySet();
+
+                Iterator<String> iterator = keySet.iterator();
+                while (iterator.hasNext()) {
+                    String key = iterator.next();
+                    builder.append("|__ " + key + " = " + contentValues.get(key) + "\n");
+                }
+
+                LogUtil.e(TAG + " method_modelvoice_p_ww ：\n" + builder.toString());
+
+            }
+        });
+
+
+        Class modelvoice_q = XposedHelpers.findClass(class_modelvoice_q, lpparam.classLoader);
+        XposedHelpers.findAndHookMethod(modelvoice_q, method_modelvoice_q_nU, String.class, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                super.afterHookedMethod(param);
+                LogUtil.e(TAG + " method_modelvoice_q_nU: " + param.args[0]);
+            }
+        });
+
+        XposedHelpers.findAndHookMethod(modelvoice_q, method_modelvoice_q_getFullPath, String.class, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                LogUtil.e(TAG + " method_modelvoice_q_getFullPath: " + param.args[0] + "  FullPath: " + param.getResult());
+            }
+        });
+
+        Class<?> modelvoice_t = XposedHelpers.findClass(class_modelvoice_t, lpparam.classLoader);
+        XposedHelpers.findAndHookMethod(modelvoice_t, method_modelvoice_t_vU, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                LogUtil.e(TAG + " method_modelvoice_t_vU: ");
+            }
+        });
+
+
+        Class<?> compatible_util_b = XposedHelpers.findClass(class_compatible_util_b, lpparam.classLoader);
+        XposedHelpers.findAndHookMethod(compatible_util_b, method_compatible_util_b_zS, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                LogUtil.e(TAG + " method_compatible_util_b_zS: ");
+            }
+        });
+
+        final Class<?> e_b_h = XposedHelpers.findClass(class_e_b_h, lpparam.classLoader);
+        XposedHelpers.findAndHookConstructor(e_b_h, Context.class, boolean.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        LogUtil.e(TAG + " class_e_b_h_Constructor: "
+                                + param.args[0] + "  , " + param.args[1]);
+                    }
+                });
+
+        XposedHelpers.findAndHookMethod(e_b_h, method_e_b_h_cR, String.class, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+
+                LogUtil.e(TAG + " method_e_b_h_cR  start Record ：" + param.args[0]);
+            }
+        });
+
+        XposedHelpers.findAndHookMethod(e_b_h, method_e_b_h_wa, new XC_MethodHook() {
+
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+
+                object_e_b_h = param.thisObject;
+                if (object_e_b_h != null) {
+                    long wk = (long) XposedHelpers.callMethod(object_e_b_h, "wk");
+                    String fileName = (String) XposedHelpers.callMethod(object_e_b_h, "getFileName");
+                    LogUtil.e(TAG + "  method_e_b_h_wa  MicroMsg.SceneVoice.Recorder" + " stop Record : " + fileName + " , len: " + wk);
+                }
+
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+
+            }
+        });
+
+    }
+
+}

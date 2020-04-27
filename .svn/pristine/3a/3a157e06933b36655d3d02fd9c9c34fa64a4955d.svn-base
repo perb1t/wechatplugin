@@ -1,0 +1,113 @@
+package com.xiezhiai.wechatplugin.hooker;
+
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.os.Environment;
+
+import com.alibaba.fastjson.JSON;
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.utils.BitmapUtil;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+/**
+ * Created by shijiwei on 2018/12/10.
+ *
+ * @Desc:
+ */
+public class TestHooker implements IHooker {
+
+    @Override
+    public void hook(XC_LoadPackage.LoadPackageParam lpparam) {
+
+//        Class<?> cls_account_a_a = XposedHelpers.findClass("com.tencent.mm.plugin.account.a.a", lpparam.classLoader);
+//        Class<?> cls_pluginsdk_l = XposedHelpers.findClass(" com.tencent.mm.pluginsdk.l", lpparam.classLoader);
+//        XposedHelpers.findAndHookMethod(cls_account_a_a, "a", cls_pluginsdk_l, new XC_MethodHook() {
+//            @Override
+//            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                Object arg = param.args[0];
+//                LogUtil.log("com.tencent.mm.plugin.account.a.a.a()  args[0] = " + arg);
+//            }
+//        });
+//
+//        Class<?> cls_SettingsPersonalInfoUI = XposedHelpers.findClass("com.tencent.mm.plugin.setting.ui.setting.SettingsPersonalInfoUI", lpparam.classLoader);
+//        XposedHelpers.findAndHookMethod(cls_SettingsPersonalInfoUI, "onActivityResult",
+//                int.class, int.class, Intent.class,
+//                new XC_MethodHook() {
+//                    @Override
+//                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                        int requestCode = (int) param.args[0];
+//                        int resultCode = (int) param.args[1];
+//                        Intent data = (Intent) param.args[2];
+//
+//                        StringBuilder b = new StringBuilder();
+//                        b.append("requestCode = " + requestCode + "\n");
+//                        b.append("resultCode = " + resultCode + "\n");
+//                        Bundle extras = data.getExtras();
+//                        if (extras != null) {
+//                            Iterator<String> iterator = extras.keySet().iterator();
+//                            if (iterator != null) {
+//                                while (iterator.hasNext()) {
+//                                    String key = iterator.next();
+//                                    Object value = extras.get(key);
+//                                    b.append(key + " = " + value + "\n");
+//                                }
+//                            }
+//                        }
+//
+//                        LogUtil.log("com.tencent.mm.plugin.account.a.a onActivityResult \n" + b.toString());
+//                    }
+//                });
+
+
+        /* 发图片 */
+
+//        Class<?> cls_ChattingUI = XposedHelpers.findClass("com.tencent.mm.ui.chatting.ChattingUI", lpparam.classLoader);
+//        XposedHelpers.findAndHookMethod(cls_ChattingUI, "onActivityResult",
+//                int.class, int.class, Intent.class,
+//                new XC_MethodHook() {
+//                    @Override
+//                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                        int requestCode = (int) param.args[0];
+//                        int resultCode = (int) param.args[1];
+//                        Intent data = (Intent) param.args[2];
+//
+//                        StringBuilder b = new StringBuilder();
+//                        b.append("requestCode = " + requestCode + "\n");
+//                        b.append("resultCode = " + resultCode + "\n");
+//                        Bundle extras = data.getExtras();
+//                        if (extras != null) {
+//                            Iterator<String> iterator = extras.keySet().iterator();
+//                            if (iterator != null) {
+//                                while (iterator.hasNext()) {
+//                                    String key = iterator.next();
+//                                    Object value = extras.get(key);
+//                                    b.append(key + " = " + value + "\n");
+//                                }
+//                            }
+//                        }
+//
+//                        LogUtil.log("com.tencent.mm.plugin.account.a.a onActivityResult \n" + b.toString());
+//                    }
+//                });
+
+        Class<?> cls_am_n = XposedHelpers.findClass("com.tencent.mm.am.n", lpparam.classLoader);
+        XposedHelpers.findAndHookMethod(cls_am_n, "a",
+                ArrayList.class, boolean.class, int.class, int.class, String.class, int.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        LogUtil.logMethodParams(param);
+                    }
+                });
+
+    }
+}

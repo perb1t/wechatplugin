@@ -1,0 +1,195 @@
+package com.xiezhiai.wechatplugin.ui.aty;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPObject;
+import com.xiezhiai.wechatplugin.R;
+import com.xiezhiai.wechatplugin.func.nohttp.URLManager;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleRequest;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleResult;
+import com.xiezhiai.wechatplugin.func.transfer.PluginHandler;
+import com.xiezhiai.wechatplugin.ui.base.BaseActivity;
+import com.xiezhiai.wechatplugin.utils.PluginLoginManager;
+import com.xiezhiai.wechatplugin.utils.VerifyUtil;
+import com.yanzhenjie.nohttp.rest.Response;
+
+import java.util.HashMap;
+
+/**
+ * Created by shijiwei on 2018/10/29.
+ *
+ * @Desc:
+ */
+public class LoginActivity extends BaseActivity implements View.OnFocusChangeListener, View.OnClickListener {
+
+    private EditText etPhone;
+    private EditText etPsw;
+    private ImageView ivPhone;
+    private ImageView ivPsw;
+    private TextView dividerPhone;
+    private TextView tvPhoneError;
+    private TextView dividerPsw;
+    private TextView tvPswError;
+    private View btnLogin;
+    private View btnRegister;
+
+    private String lastLoginuUser;
+
+    @Override
+    public int getLayoutResId() {
+        return R.layout.activity_login;
+    }
+
+    @Override
+    public void initialData(Bundle savedInstanceState) {
+        Object[] lastLoginAccount = PluginLoginManager.getLastLoginAccount(this);
+        lastLoginuUser = (String) lastLoginAccount[0];
+    }
+
+    @Override
+    public void initialView() {
+        btnLogin = findViewById(R.id.btn_login);
+        btnRegister = findViewById(R.id.btn_register);
+        etPhone = findViewById(R.id.et_phone);
+        etPsw = findViewById(R.id.et_psw);
+        ivPhone = findViewById(R.id.iv_phone_icon);
+        ivPsw = findViewById(R.id.iv_psw_icon);
+        tvPhoneError = findViewById(R.id.tv_phone_error);
+        tvPswError = findViewById(R.id.tv_psw_error);
+        dividerPhone = findViewById(R.id.divider_phone);
+        dividerPsw = findViewById(R.id.divider_psw);
+        ivPhone.setEnabled(false);
+        ivPsw.setEnabled(false);
+        etPhone.setText(lastLoginuUser);
+    }
+
+    @Override
+    public void initialEvn() {
+        etPhone.setOnFocusChangeListener(this);
+        etPsw.setOnFocusChangeListener(this);
+        btnLogin.setOnClickListener(this);
+        btnRegister.setOnClickListener(this);
+    }
+
+    @Override
+    public void onBackKeyPressed() {
+        finish();
+    }
+
+    @Override
+    public void onNetworkStateChanged(int type, boolean isAvailable) {
+
+    }
+
+    @Override
+    public void onFocusChange(View v, boolean hasFocus) {
+        switch (v.getId()) {
+            case R.id.et_phone:
+                ivPhone.setEnabled(hasFocus);
+                dividerPhone.setBackgroundColor(hasFocus ? Color.parseColor("#007AFF") : Color.parseColor("#B2B2B2"));
+                break;
+            case R.id.et_psw:
+                ivPsw.setEnabled(hasFocus);
+                dividerPsw.setBackgroundColor(hasFocus ? Color.parseColor("#007AFF") : Color.parseColor("#B2B2B2"));
+                break;
+        }
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btn_login:
+                VerifyUtil.Result phone = VerifyUtil.isEmptyInput(etPhone);
+                VerifyUtil.Result psw = VerifyUtil.isEmptyInput(etPsw);
+                if (phone.isEmpty) {
+                    showMsg("手机号格式错误!");
+                    return;
+                }
+                if (psw.isEmpty) {
+                    showMsg("密码格式错误!");
+                    return;
+                }
+
+                login(phone.value, psw.value);
+                break;
+            case R.id.btn_register:
+                startActivity(new Intent(this, RegisterActivity.class));
+                break;
+
+        }
+    }
+
+    @Override
+    public void onHttpSucceed(int what, SimpleResult ret, Response response) {
+        super.onHttpSucceed(what, ret, response);
+        String KEY_USER_ID = "user_id";
+        String KEY_SIGN = "sign";
+        if (ret != null) {
+            if (ret.getCode() == SimpleResult.SUCCESS) {
+                JSONObject data = JSON.parseObject(ret.getData());
+                if (data != null) {
+                    if (data.containsKey(KEY_USER_ID)) {
+                        PluginHandler.cookie.setUserID(data.getString(KEY_USER_ID));
+                    }
+                    if (data.containsKey(KEY_SIGN)) {
+                        PluginHandler.cookie.setSign(data.getString(KEY_SIGN));
+                    }
+                    PluginHandler.cookie.updatePluginLogin(true);
+                    PluginLoginManager.saveLoginAccount(
+                            this,
+                            etPhone.getText().toString(),
+                            etPsw.getText().toString(),
+                            true
+                    );
+                    startActivity(new Intent(this, MainActivity.class));
+                } else {
+                    showMsg("系统异常");
+                }
+            } else {
+                showMsg(ret.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public void onHttpFailed(int what, SimpleResult ret, Response response) {
+        super.onHttpFailed(what, ret, response);
+        if (ret != null) {
+            showMsg(ret.getMessage());
+        }
+    }
+
+    @Override
+    public void onHttpFinish(int what) {
+        super.onHttpFinish(what);
+    }
+
+    /**
+     * 登录
+     *
+     * @param phone
+     * @param psw
+     */
+    private void login(String phone, String psw) {
+        SimpleRequest<SimpleResult> request = new SimpleRequest<SimpleResult>(URLManager.Login.getURL(), URLManager.Login.method, SimpleResult.class);
+        HashMap<String, String> p = new HashMap<>();
+        p.put("mobile", phone);
+        p.put("password", psw);
+        request.setRequestBodyAsJson(p);
+        addTask2Queue(
+                URLManager.Login.action,
+                request,
+                true);
+    }
+
+}

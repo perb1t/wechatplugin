@@ -1,0 +1,343 @@
+package com.xiezhiai.wechatplugin.ui.aty;
+
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.view.View;
+import android.widget.ImageView;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonArray;
+import com.scwang.smartrefresh.layout.SmartRefreshLayout;
+import com.scwang.smartrefresh.layout.api.RefreshLayout;
+import com.scwang.smartrefresh.layout.listener.OnRefreshListener;
+import com.xiezhiai.wechatplugin.R;
+import com.xiezhiai.wechatplugin.adapter.SnsWrapperListAdapter;
+import com.xiezhiai.wechatplugin.func.nohttp.URLManager;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleRequest;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleResult;
+import com.xiezhiai.wechatplugin.hooker.SnsHooker;
+import com.xiezhiai.wechatplugin.model.xiezhi.SnsWrapper;
+import com.xiezhiai.wechatplugin.model.xiezhi.Snsqa;
+import com.xiezhiai.wechatplugin.receiver.HookDataReceiver;
+import com.xiezhiai.wechatplugin.ui.base.BaseActivity;
+import com.xiezhiai.wechatplugin.utils.sns.SnsParser;
+import com.xiezhiai.wechatplugin.utils.sns.bean.SnsInfo;
+import com.xiezhiai.wechatplugin.widget.CommonTopBar;
+import com.xiezhiai.wechatplugin.widget.CommonDilalog;
+import com.yanzhenjie.nohttp.rest.Response;
+
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+public class SnsWrapperListActivity extends BaseActivity implements View.OnClickListener, CommonTopBar.CommonTopBarListener, SnsWrapperListAdapter.SnsWrapperAdapterListner, CommonDilalog.CommonDilalogListener {
+
+    private static final String TAG = "SnsWrapperListActivity";
+
+    public static final int FLAG_SNS_PARSER_READY = 100;
+
+    private CommonTopBar commonTopBar;
+    private SmartRefreshLayout smartRefreshLayout;
+    private RecyclerView lvSns;
+    private ImageView btnCloseTips;
+    private View tipsLayer;
+    private View emptyView;
+
+    private SnsWrapperListAdapter adapter;
+    private List<SnsWrapper> snsWrappers = new ArrayList<>();
+    private List<Snsqa> snsqas = new ArrayList<>();
+
+    private static SnsParser snsParser;
+
+    private int[] deletePosition = new int[2];
+    private int[] editPosition = new int[2];
+
+    private Handler uiHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            if (msg.what == FLAG_SNS_PARSER_READY) {
+                snsParser = (SnsParser) msg.obj;
+                getWechatSnsList();
+                getGoodsList(20, 1, getSnsId(snsWrappers));
+            } else {
+                if (smartRefreshLayout != null)
+                    smartRefreshLayout.finishRefresh();
+            }
+        }
+    };
+
+    @Override
+    public int getLayoutResId() {
+        return R.layout.activity_friends;
+    }
+
+    @Override
+    public void initialData(Bundle savedInstanceState) {
+
+    }
+
+    @Override
+    public void initialView() {
+        lvSns = findViewById(R.id.sns_recycle);
+        commonTopBar = findViewById(R.id.common_topbar);
+        btnCloseTips = findViewById(R.id.img_refresh_close);
+        tipsLayer = findViewById(R.id.layout_refresh);
+        smartRefreshLayout = findViewById(R.id.refresh_layout);
+        emptyView = findViewById(R.id.empty_layer);
+
+        adapter = new SnsWrapperListAdapter(snsWrappers);
+        lvSns.setLayoutManager(new LinearLayoutManager(this));
+        lvSns.setAdapter(adapter);
+    }
+
+    @Override
+    public void initialEvn() {
+        commonTopBar.setCommonTopBarListener(this);
+        btnCloseTips.setOnClickListener(this);
+        adapter.setSnsWrapperAdapterListner(this);
+        smartRefreshLayout.setOnRefreshListener(new OnRefreshListener() {
+            @Override
+            public void onRefresh(@NonNull RefreshLayout refreshLayout) {
+                SnsHooker.checkApkFile(uiHandler, SnsWrapperListActivity.this);
+            }
+        });
+
+        smartRefreshLayout.autoRefresh();
+        commonDilalog.setCommonDilalogListener(this);
+    }
+
+    @Override
+    public void onBackKeyPressed() {
+        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
+    public void onNetworkStateChanged(int type, boolean isAvailable) {
+
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.img_refresh_close:
+                tipsLayer.setVisibility(View.GONE);
+                break;
+        }
+    }
+
+
+    @Override
+    public void onTopLeftButtonClick(View v) {
+        finish();
+    }
+
+    @Override
+    public void onTopRightButtonClick(View v) {
+
+    }
+
+    @Override
+    public void onDeleteSnsqa(int snsWrapperIndex, int snsqaIndex) {
+        commonDilalog.show("确认删除该条商品信息?", "删除");
+        deletePosition[0] = snsWrapperIndex;
+        deletePosition[1] = snsqaIndex;
+    }
+
+    @Override
+    public void onEditSnnqa(int snsWrapperIndex, int snsqaIndex) {
+        editPosition[0] = snsWrapperIndex;
+        editPosition[1] = snsqaIndex;
+
+        Intent intent = new Intent(this, EditeGoodsActivity.class);
+        intent.putExtra(EditeGoodsActivity.KEY_IS_EDIT, true);
+        intent.putExtra(EditeGoodsActivity.KEY_SNS_qa, snsWrappers.get(snsWrapperIndex).getSnsqas().get(snsqaIndex));
+        startActivityForResult(intent, URLManager.Update_Goods_qa.action);
+    }
+
+    /* deleteDialog*/
+    @Override
+    public void onTopCancel(CommonDilalog dilalog) {
+        dilalog.dismiss();
+    }
+
+    @Override
+    public void onCancel(CommonDilalog dilalog) {
+        dilalog.dismiss();
+    }
+
+    @Override
+    public void onConfim(CommonDilalog dilalog) {
+        dilalog.dismiss();
+        deleteGoodList("delete", snsWrappers.get(deletePosition[0]).getSnsqas().get(deletePosition[1]).getId());
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (data != null) {
+            if (resultCode == RESULT_OK) {
+                if (requestCode == URLManager.Add_Goods_qa.action) {
+                    ArrayList<Snsqa> qas = data.getParcelableArrayListExtra(GenerateGoodsActivity.KEY_SNS_qa);
+                    int index = data.getIntExtra(GenerateGoodsActivity.KEY_SNSWRAPEPR_INDEX, 0);
+                    snsWrappers.get(index).setSnsqas(qas);
+                    adapter.notifyItemChanged(index);
+                } else if (requestCode == URLManager.Update_Goods_qa.action) {
+                    Snsqa qa = data.getParcelableExtra(EditeGoodsActivity.KEY_SNS_qa);
+                    if (qa != null) {
+                        snsWrappers.get(editPosition[0]).getSnsqas().set(editPosition[1], qa);
+                        adapter.notifyItemChanged(editPosition[0]);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onHttpSucceed(int what, SimpleResult ret, Response response) {
+        super.onHttpSucceed(what, ret, response);
+        if (ret != null) {
+            if (what == URLManager.Get_Goods_qa_List.action) {
+                if (ret.getCode() == SimpleResult.SUCCESS) {
+                    JSONObject data = JSON.parseObject(ret.getData());
+                    List<Snsqa> array = JSONArray.parseArray(data.getJSONArray("goods_list").toJSONString(), Snsqa.class);
+                    if (array != null && array.size() != 0) {
+                        snsqas.clear();
+                        snsqas.addAll(array);
+                    }
+                    notifyDataChanged();
+                } else {
+                    showMsg(ret.getMessage());
+                }
+            } else if (what == URLManager.Delete_Goods_qa.action) {
+                if (ret.getCode() == SimpleResult.SUCCESS) {
+                    snsWrappers.get(deletePosition[0]).getSnsqas().remove(deletePosition[1]);
+                    adapter.notifyItemChanged(deletePosition[0]);
+                    showMsg(ret.getMessage());
+                } else {
+                    showMsg(ret.getMessage());
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onHttpFailed(int what, SimpleResult ret, Response response) {
+        super.onHttpFailed(what, ret, response);
+        if (ret != null) {
+
+        }
+    }
+
+    @Override
+    public void onHttpFinish(int what) {
+        super.onHttpFinish(what);
+        smartRefreshLayout.finishRefresh();
+    }
+
+    /**
+     * 获取朋友圈商品问答列表
+     *
+     * @param ps
+     * @param pn
+     * @param list
+     */
+    private void getGoodsList(int ps, int pn, List list) {
+        String s = JSON.toJSONString(list);
+        String encode = URLEncoder.encode(s);
+        SimpleRequest<SimpleResult> request = new SimpleRequest<SimpleResult>(URLManager.Get_Goods_qa_List.getURL() + "?pn=" + pn + "&ps=" + ps + "&monent_id_list=" + encode, URLManager.Get_Goods_qa_List.method, SimpleResult.class);
+        addTask2Queue(
+                URLManager.Get_Goods_qa_List.action,
+                request
+        );
+    }
+
+    /**
+     * 更新朋友圈商品问答列表
+     *
+     * @param type
+     * @param list
+     */
+    private void deleteGoodList(String type, String... list) {
+        SimpleRequest<SimpleResult> request = new SimpleRequest<SimpleResult>(URLManager.Delete_Goods_qa.getURL(), URLManager.Delete_Goods_qa.method, SimpleResult.class);
+        HashMap<String, Object> p = new HashMap<>();
+        p.put("type", type);
+        p.put("goods_id_list", list);
+        request.setRequestBodyAsJson(p);
+        addTask2Queue(
+                URLManager.Delete_Goods_qa.action,
+                request
+        );
+    }
+
+    /**
+     * 获取微信朋友圈 [ 筛选图片类型的朋友圈 ]
+     */
+    private void getWechatSnsList() {
+        snsWrappers.clear();
+        try {
+            if (snsParser != null) {
+                for (SnsInfo sns : HookDataReceiver.loginedWechatSnsInfos) {
+                    SnsInfo snsInfo = snsParser.parseSnsAllFromBin(sns.getContentBuf(), sns.getAttrBuf());
+                    snsInfo.copy(sns);
+                    snsInfo.print();
+                    if (snsInfo.getType().equals(SnsInfo.IMAGE) && snsInfo.getMediaList() != null && snsInfo.getMediaList().size() != 0)
+                        snsWrappers.add(new SnsWrapper(snsInfo, null));
+                }
+            }
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+
+        emptyView.setVisibility(snsWrappers.size() == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * 获取朋友圈的ID集合
+     *
+     * @param list
+     * @return
+     */
+    private List<String> getSnsId(List<SnsWrapper> list) {
+        List<String> ids = new ArrayList<>();
+        if (list != null && list.size() != 0) {
+            for (int i = 0; i < list.size(); i++) {
+                ids.add(list.get(i).getSnsInfo().getSnsId());
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * 融合数据并刷新UI
+     */
+    private void notifyDataChanged() {
+
+        for (int i = 0; i < snsWrappers.size(); i++) {
+            snsWrappers.get(i).getSnsqas().clear();
+            for (int j = 0; j < snsqas.size(); j++) {
+                if (snsWrappers.get(i).getSnsInfo().snsId.equals(snsqas.get(j).getSnsId())) {
+                    snsWrappers.get(i).getSnsqas().add(snsqas.get(j));
+                }
+            }
+        }
+        adapter.notifyDataSetChanged();
+    }
+
+
+}

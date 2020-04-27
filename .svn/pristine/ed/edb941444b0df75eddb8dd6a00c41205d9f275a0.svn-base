@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/btn_send_msg_2_user"
+        android:layout_width="310dp"
+        android:layout_height="144dp"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/selector_group_send_msg_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:scaleType="center"
+                android:src="@mipmap/icon_msg" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/group_send_msg"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+
+        <TextView
+            android:layout_marginLeft="32dp"
+            android:layout_width="158dp"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="4dp"
+            android:text="自动为您群发消息给好友，默认发送全部好友，您也可以选择好友标签分类群发。"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/btn_send_msg_2_group"
+        android:layout_width="310dp"
+        android:layout_height="144dp"
+        android:layout_marginTop="24dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/selector_group_send_msg_g_background">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="wrap_content"
+                android:scaleType="center"
+                android:src="@mipmap/icon_msg_g" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/group_send_msg_g"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+
+        <TextView
+            android:layout_marginLeft="20dp"
+            android:layout_width="158dp"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="4dp"
+            android:text="自动为您群发消息给好友，默认发送全部好友，您也可以选择好友标签分类群发。"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,46 @@
+package com.xiezhiai.wechatplugin.func.transfer.intef;
+
+import android.content.Context;
+import android.content.Intent;
+
+/**
+ * Created by shijiwei on 2018/11/13.
+ *
+ * @Desc:
+ */
+public interface IHookerHandler {
+
+    /**
+     * 处理插件的cookie以及配置可操作的权限
+     *
+     * @param intent
+     */
+    void handlePluginConfigUpdate(Intent intent);
+
+    /**
+     * 处理用户群发消息
+     *
+     * @param intent
+     */
+    void handleMultipleSendMessageToUser(Intent intent);
+
+    /**
+     * 处理聊天室群发消息
+     *
+     * @param intent
+     */
+    void handleMultipleSendMessageToChatroom(Intent intent);
+
+    /**
+     * 自动回复的聊天组更新
+     *
+     * @param intent
+     */
+    void handleAutoReplyChatroomUpdate(Intent intent);
+
+    /**
+     * 通知插件微信已成功hook
+     */
+    void notifyPluginWechatHooked(Context context);
+
+}

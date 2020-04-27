@@ -1,0 +1,352 @@
+package com.xiezhiai.wechatplugin.receiver;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Parcelable;
+import android.text.TextUtils;
+
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.core.GlobalVariable;
+import com.xiezhiai.wechatplugin.core.SettingConfig;
+import com.xiezhiai.wechatplugin.hooker.AutoReplyHooker;
+import com.xiezhiai.wechatplugin.hooker.ContactsHooker;
+import com.xiezhiai.wechatplugin.model.wechat.ChatRoom;
+import com.xiezhiai.wechatplugin.model.wechat.ContactLabel;
+import com.xiezhiai.wechatplugin.model.wechat.Message;
+import com.xiezhiai.wechatplugin.model.wechat.UserInfo;
+import com.xiezhiai.wechatplugin.model.xiezhi.WXUser;
+import com.xiezhiai.wechatplugin.utils.AppUtil;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+import com.xiezhiai.wechatplugin.utils.sns.bean.SnsInfo;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Created by shijiwei on 2018/10/26.
+ *
+ * @Desc:
+ */
+public class CommandReceiver extends BroadcastReceiver {
+
+    private static final String TAG = "CommandReceiver";
+
+    public static final String ACTION_SEND_MSG_TO_USER = "com.xiezhiai.wechatplugin.hooker.CommandReceiver_send_msg_to_user";
+    public static final String ACTION_SEND_MSG_TO_CHATROOM = "com.xiezhiai.wechatplugin.hooker.CommandReceiver_send_msg_to_chatroom";
+    public static final String ACTION_SETTING_CONFIG = "com.xiezhiai.wechatplugin.hooker.CommandReceiver_Setting_Config";
+    public static final String ACTION_SELECT_AUTO_REPLY_CHATROOM = "com.xiezhiai.wechatplugin.hooker.CommandReceiver_Select_autoReplay_chatroom";
+
+    public static final String KEY_REPLY_CONTENT = "content";
+    public static final String KEY_SELECTED_TARGET = "selected_target";
+    public static final String KEY_SELECTED_ALL = "selected_all";
+
+    public static final String KEY_ISLOGIN = "isLogin";
+    public static final String KEY_IN_SERVICE_WXUSER_ID = "in_service_wxuser_id";
+    public static final String KEY_AUTO_REPLY = "auto_reply";
+    public static final String KEY_CHATTING_AUTO_REPLY = "chatting_auto_reply";
+    public static final String KEY_AUTO_RECEIVE_LUCKMONEY = "auto_receive_luckmoney";
+    public static final String KEY_AUTO_RECEIVE_TRANSFER = "auto_receive_transfer";
+    public static final String KEY_CHATROOM_AUTO_REPLY = "chatroom_auto_reply";
+    public static final String KEY_CHATROOM_CHATTING_AUTO_REPLY = "chatroom_chatting_auto_reply";
+
+    public static final String KEY_SIGN = "sign";
+    public static final String KEY_TENANT_ID = "tenant_id";
+    public static final String KEY_APP_USER_ID = "app_user_id";
+
+    public static final String KEY_SELECT_AUTO_REPLY_CHATROOM = "select_auto_reply_chatroom";
+    public static final String KEY_SELECT_ALL_AUTO_REPLY_CHATROOM = "select_all_auto_reply_chatroom";
+
+
+    public static ArrayList<ContactLabel> contactLabels = new ArrayList<>();
+    public static ArrayList<UserInfo> contacts = new ArrayList<>();
+    public static ArrayList<ChatRoom> chatRooms = new ArrayList<>();
+
+    public static ArrayList<ChatRoom> autoReplychatRooms = new ArrayList<>();
+    public static boolean allChatroomsAutoReply = false;
+
+    /* Hook进程判断app是否登录*/
+    public static boolean isLogin = false;
+    /* Hook进程判断 当前服务的 wx_id */
+    public static String inServiceWXUserId = "";
+    public static SettingConfig.Permission permission = new SettingConfig.Permission();
+
+    /* header cookie */
+    /* 登录之后服务器返回的认证签名 */
+    public static String sign;
+    /* 当前选中服务的微信id */
+    public static String tenantID;
+    /* App登录账户的id */
+    public static String userID;
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+
+        if (intent != null) {
+            LogUtil.log("CommandReceiver : action : " + intent.getAction());
+            String action = intent.getAction();
+            if (action.equals(ACTION_SEND_MSG_TO_USER)) {
+
+                ArrayList<ContactLabel> contactLabels = intent.getParcelableArrayListExtra(KEY_SELECTED_TARGET);
+                String replyContent = intent.getStringExtra(KEY_REPLY_CONTENT);
+                boolean all = intent.getBooleanExtra(KEY_SELECTED_ALL, true);
+                LogUtil.log("微信群发消息_好友 all=：" + all + "  size=" + contactLabels.size() + " content:" + replyContent);
+                if (all) {
+                    /* 全部好友 */
+                    for (int i = 0; i < contacts.size(); i++) {
+                        AutoReplyHooker.putMessage(new Message(contacts.get(i).getUserName(), replyContent));
+                    }
+                } else {
+                    /* 分类好友 */
+                    List<UserInfo> temp = new ArrayList<>();
+                    for (int i = 0; i < contacts.size(); i++) {
+                        UserInfo userInfo = contacts.get(i);
+                        for (int j = 0; j < contactLabels.size(); j++) {
+                            if (userInfo.getLabels().contains(contactLabels.get(j).getLabelID())) {
+                                if (!temp.contains(userInfo)) {
+                                    temp.add(userInfo);
+                                }
+                            }
+                        }
+                    }
+
+                    for (int i = 0; i < temp.size(); i++) {
+                        AutoReplyHooker.putMessage(new Message(temp.get(i).getUserName(), replyContent));
+                    }
+                }
+
+            } else if (action.equals(ACTION_SEND_MSG_TO_CHATROOM)) {
+
+                ArrayList<ChatRoom> result = intent.getParcelableArrayListExtra(KEY_SELECTED_TARGET);
+                String replyContent = intent.getStringExtra(KEY_REPLY_CONTENT);
+                boolean all = intent.getBooleanExtra(KEY_SELECTED_ALL, true);
+                LogUtil.log("微信群发消息_群组 all=：" + all + "  size=" + result.size() + " content:" + replyContent);
+                if (result != null) {
+                    for (int i = 0; i < result.size(); i++) {
+                        LogUtil.log("微信群发消息_群组 all=：" + all + "  size=" + result.get(i).getId() + " content:" + replyContent);
+                    }
+                }
+                if (all) {
+                    /* 全部群聊 */
+                    for (int i = 0; i < chatRooms.size(); i++) {
+                        AutoReplyHooker.putMessage(new Message(chatRooms.get(i).getId(), replyContent));
+                    }
+                } else {
+                    /* 指定群聊 */
+                    for (int i = 0; i < result.size(); i++) {
+                        AutoReplyHooker.putMessage(new Message(result.get(i).getId(), replyContent));
+                    }
+                }
+            } else if (action.equals(ACTION_SELECT_AUTO_REPLY_CHATROOM)) {
+                allChatroomsAutoReply = intent.getBooleanExtra(KEY_SELECT_ALL_AUTO_REPLY_CHATROOM, false);
+                ArrayList<ChatRoom> cr = intent.getParcelableArrayListExtra(KEY_SELECT_AUTO_REPLY_CHATROOM);
+                if (cr != null && cr.size() != 0) {
+                    autoReplychatRooms.clear();
+                    autoReplychatRooms.addAll(cr);
+                    for (int i = 0; i < autoReplychatRooms.size(); i++) {
+                        LogUtil.log(TAG + "  allChatroomsAutoReply: " + allChatroomsAutoReply + " id: " + autoReplychatRooms.get(i).getId());
+                    }
+                }
+
+            } else if (action.equals(ACTION_SETTING_CONFIG)) {
+                /* 配置文件 */
+                if (intent.hasExtra(KEY_ISLOGIN)) {
+                    isLogin = intent.getBooleanExtra(KEY_ISLOGIN, false);
+                    if (!isLogin) {
+                        permission.clear();
+                    } else {
+                        Config.loadWXLastLoginUser();
+                        ContactsHooker.hookTaskHandler.sendEmptyMessage(ContactsHooker.GET_CHATROOMS);
+                        ContactsHooker.hookTaskHandler.sendEmptyMessage(ContactsHooker.GET_CONTACTS);
+                    }
+                    LogUtil.log("========= 邂智科技微信插件 ========= " + (isLogin ? "[ 登录 ]" : "[ 退出 ]"));
+                }
+
+                if (intent.hasExtra(KEY_IN_SERVICE_WXUSER_ID)) {
+                    inServiceWXUserId = intent.getStringExtra(KEY_IN_SERVICE_WXUSER_ID);
+                }
+
+                if (intent.hasExtra(KEY_AUTO_REPLY)) {
+                    permission.autoReply = intent.getBooleanExtra(KEY_AUTO_REPLY, false);
+                }
+
+                if (intent.hasExtra(KEY_CHATROOM_AUTO_REPLY)) {
+                    permission.chatAutoReply = intent.getBooleanExtra(KEY_CHATROOM_AUTO_REPLY, false);
+                }
+
+                if (intent.hasExtra(KEY_CHATTING_AUTO_REPLY)) {
+                    permission.chatAutoReply = intent.getBooleanExtra(KEY_CHATTING_AUTO_REPLY, false);
+                }
+
+                if (intent.hasExtra(KEY_CHATROOM_AUTO_REPLY)) {
+                    permission.chatroomAutoReply = intent.getBooleanExtra(KEY_CHATROOM_AUTO_REPLY, false);
+                }
+
+                if (intent.hasExtra(KEY_CHATROOM_CHATTING_AUTO_REPLY)) {
+                    permission.chatroomChatAutoReply = intent.getBooleanExtra(KEY_CHATROOM_CHATTING_AUTO_REPLY, false);
+                }
+
+                if (intent.hasExtra(KEY_AUTO_RECEIVE_LUCKMONEY)) {
+                    permission.autoReceiveLuckMoney = intent.getBooleanExtra(KEY_AUTO_RECEIVE_LUCKMONEY, false);
+                }
+
+                if (intent.hasExtra(KEY_AUTO_RECEIVE_TRANSFER)) {
+                    permission.autoReceiveTransfer = intent.getBooleanExtra(KEY_AUTO_RECEIVE_TRANSFER, false);
+                }
+
+                if (intent.hasExtra(KEY_SIGN)) {
+                    sign = intent.getStringExtra(KEY_SIGN);
+                }
+
+                if (intent.hasExtra(KEY_TENANT_ID)) {
+                    tenantID = intent.getStringExtra(KEY_TENANT_ID);
+                }
+
+                if (intent.hasExtra(KEY_APP_USER_ID)) {
+                    userID = intent.getStringExtra(KEY_APP_USER_ID);
+                }
+
+                for (String key : intent.getExtras().keySet()) {
+                    LogUtil.log(TAG + "     | key：" + key + " | value: " + intent.getExtras().get(key));
+                }
+
+            }
+        }
+    }
+
+
+    /**
+     * @param data
+     */
+    public static void updateChatRooms(ArrayList<ChatRoom> data) {
+        chatRooms.clear();
+        chatRooms.addAll(data);
+        Intent intent = new Intent();
+        intent.setAction(HookDataReceiver.ACTION_DATA_RECEIVER);
+        intent.putExtra(HookDataReceiver.KEY_DATA_TYPE, HookDataReceiver.CHATROOM);
+        intent.putParcelableArrayListExtra(HookDataReceiver.KEY_DATA, chatRooms);
+        AppUtil.getSystemContext().sendBroadcast(intent);
+    }
+
+    public static void updateContactLables(ArrayList<ContactLabel> data) {
+        contactLabels.clear();
+        contactLabels.addAll(data);
+        Intent intent = new Intent();
+        intent.setAction(HookDataReceiver.ACTION_DATA_RECEIVER);
+        intent.putExtra(HookDataReceiver.KEY_DATA_TYPE, HookDataReceiver.CONTACTLABEL);
+        intent.putParcelableArrayListExtra(HookDataReceiver.KEY_DATA, contactLabels);
+        AppUtil.getSystemContext().sendBroadcast(intent);
+    }
+
+    public static void updateContacts(ArrayList<UserInfo> data) {
+        contacts.clear();
+        contacts.addAll(data);
+    }
+
+    public static void updateSns(ArrayList<SnsInfo> data) {
+        Intent intent = new Intent();
+        intent.setAction(HookDataReceiver.ACTION_DATA_RECEIVER);
+        intent.putExtra(HookDataReceiver.KEY_DATA_TYPE, HookDataReceiver.SNS);
+        intent.putParcelableArrayListExtra(HookDataReceiver.KEY_DATA, data);
+        AppUtil.getSystemContext().sendBroadcast(intent);
+    }
+
+
+    /**
+     * 更新权限
+     *
+     * @param context
+     * @param key
+     * @param value
+     */
+    public static void updateSettingConfigPermission(Context context, String key, boolean value) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SETTING_CONFIG);
+        intent.putExtra(key, value);
+        context.sendBroadcast(intent);
+    }
+
+    /**
+     * 更新服务微信id
+     *
+     * @param context
+     * @param inServiceWXuserId
+     */
+    public static void updateSettingConfigInServiceWXUserId(Context context, String inServiceWXuserId) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SETTING_CONFIG);
+        intent.putExtra(KEY_IN_SERVICE_WXUSER_ID, inServiceWXuserId);
+        context.sendBroadcast(intent);
+    }
+
+    /**
+     * 更新插件登录状态
+     *
+     * @param isLogin
+     */
+    public static void updateLoginState(Context context, boolean isLogin) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SETTING_CONFIG);
+        intent.putExtra(CommandReceiver.KEY_ISLOGIN, isLogin);
+        context.sendBroadcast(intent);
+    }
+
+    /**
+     * 服务器返回的sign
+     *
+     * @param context
+     * @param sign
+     */
+    public static void updateCookieSign(Context context, String sign) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SETTING_CONFIG);
+        intent.putExtra(CommandReceiver.KEY_SIGN, sign);
+        context.sendBroadcast(intent);
+    }
+
+    /**
+     * 服务中的微信 tenantID
+     *
+     * @param context
+     * @param tenantID
+     */
+    public static void updateCookieTenantID(Context context, String tenantID) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SETTING_CONFIG);
+        intent.putExtra(CommandReceiver.KEY_TENANT_ID, tenantID);
+        context.sendBroadcast(intent);
+    }
+
+    /**
+     * @param context
+     * @param userID
+     */
+    public static void updateCookieAppUserID(Context context, String userID) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SETTING_CONFIG);
+        intent.putExtra(CommandReceiver.KEY_APP_USER_ID, userID);
+        context.sendBroadcast(intent);
+    }
+
+    public static void checkCookie() {
+//        if (TextUtils.isEmpty(userID) || TextUtils.isEmpty(tenantID) || TextUtils.isEmpty(sign) || TextUtils.isEmpty(inServiceWXUserId)) {
+        HookDataReceiver.shotHookWechat(AppUtil.getSystemContext());
+//        }
+    }
+
+    /**
+     * 判断XieZhiAI微信插件是否可用
+     *
+     * @return
+     */
+    public static boolean isWechatPluginInService() {
+        boolean checkInServiceWXUser = false;
+        String userName = Config.xWechat.loginUser.getUserName();
+        LogUtil.log("检测插件执行条件 inServiceWXUserId: " + inServiceWXUserId + "  wxLastLoginUserName: " + userName);
+        if (TextUtils.isEmpty(userName) || TextUtils.isEmpty(inServiceWXUserId)) {
+            checkInServiceWXUser = false;
+        } else if (userName.equals(inServiceWXUserId)) {
+            checkInServiceWXUser = true;
+        }
+        LogUtil.log("检测插件执行条件： " + "  | checkInServiceWXUser: " + checkInServiceWXUser + " | isLogin: " + isLogin);
+        return checkInServiceWXUser && isLogin;
+    }
+
+
+}

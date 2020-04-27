@@ -1,0 +1,57 @@
+package com.xiezhiai.wechatplugin.model.wechat;
+
+import android.widget.ImageView;
+
+import java.util.List;
+
+/**
+ * Created by caicai on 2018/10/29.
+ */
+public class SnsFriendBean {
+    private String snsTime;
+    private String snsContent;
+    private List<ImageView> snsImage;
+    private String snsPrompt;
+
+    @Override
+    public String toString() {
+        return "SnsFriendBean{" +
+                "snsTime='" + snsTime + '\'' +
+                ", snsContent='" + snsContent + '\'' +
+                ", snsImage=" + snsImage +
+                ", snsPrompt='" + snsPrompt + '\'' +
+                '}';
+    }
+
+    public String getSnsTime() {
+        return snsTime;
+    }
+
+    public void setSnsTime(String snsTime) {
+        this.snsTime = snsTime;
+    }
+
+    public String getSnsContent() {
+        return snsContent;
+    }
+
+    public void setSnsContent(String snsContent) {
+        this.snsContent = snsContent;
+    }
+
+    public List<ImageView> getSnsImage() {
+        return snsImage;
+    }
+
+    public void setSnsImage(List<ImageView> snsImage) {
+        this.snsImage = snsImage;
+    }
+
+    public String getSnsPrompt() {
+        return snsPrompt;
+    }
+
+    public void setSnsPrompt(String snsPrompt) {
+        this.snsPrompt = snsPrompt;
+    }
+}

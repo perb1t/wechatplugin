@@ -1,0 +1,280 @@
+package com.xiezhiai.wechatplugin.func.simulate;
+
+import android.accessibilityservice.AccessibilityService;
+import android.app.ActivityManager;
+import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class ControlService extends AccessibilityService implements ISimulate {
+
+    private static final String TAG = "ControlService";
+
+    public static final int GO_BACK = 0;
+    public static final int GO_SEARCH_UI = 1;
+    public static final int PASTE_SEARCH_TEXT = 2;
+    public static final int HANDLE_SEARCH_RESULT = 3;
+    public static final int SWITCH_TEXT_VOICE = 4;
+    public static final int PASTE_SEND_CONTENT = 5;
+    public static final int SEND = 6;
+
+    public static boolean isSendSuccess = true;
+    public static boolean isStartTask = false;
+    public static boolean isWechatForeground = false;
+    private int execStep = GO_BACK;
+
+    private static final long EXECUTE_DELAY_TIME = 500;
+    private String lastPageUI;
+
+
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        String className = event.getClassName().toString();
+        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || className.startsWith("android"))
+            return;
+        LogUtil.e(TAG + " onAccessibilityEvent className : " + className);
+        if (className.startsWith(WECHAT_PACKAGE)) {
+            /* 微信界面 */
+            lastPageUI = className;
+            if (!isWechatForeground) {
+                isWechatForeground = true;
+                LogUtil.e(TAG + " 微信处于前台 : " + className);
+            }
+
+        } else {
+            /* 退出微信界面 */
+            if (isWechatForeground) {
+                isWechatForeground = false;
+                LogUtil.e(TAG + " 微信处于后台 : " + className);
+            }
+            return;
+        }
+        switch (event.getEventType()) {
+            case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
+                if (isSendSuccess) {
+                    return;
+                }
+                switch (className) {
+                    case WECHAT_LAUNCHUI:
+                        lanchUIFlow();
+                        break;
+                    case WECHAT_SEARCHUI:
+                        searchUIFlow();
+                        break;
+                    case WECHAT_CHATUI:
+                        chattingUIFlow();
+                        break;
+                    default:
+                        goBack();
+                        break;
+                }
+                break;
+        }
+    }
+
+    @Override
+    public void onInterrupt() {
+
+    }
+
+    @Override
+    public void onCreate() {
+        new Thread(new MsgLooper()).start();
+    }
+
+
+    /**
+     * 返回启动前 app状态
+     */
+    private void resetAndReturnApp() {
+        isSendSuccess = true;
+        isStartTask = false;
+//        ActivityManager activtyManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+//        List<ActivityManager.RunningTaskInfo> runningTaskInfos = activtyManager.getRunningTasks(3);
+//        for (ActivityManager.RunningTaskInfo runningTaskInfo : runningTaskInfos) {
+//            if (this.getPackageName().equals(runningTaskInfo.topActivity.getPackageName())) {
+//                activtyManager.moveTaskToFront(runningTaskInfo.id, ActivityManager.MOVE_TASK_WITH_HOME);
+//                return;
+//            }
+//        }
+    }
+
+
+    private void goBack() {
+        try {
+            Thread.sleep(EXECUTE_DELAY_TIME);
+            isStartTask = true;
+            SimulateManager.findTextAndClick(this, "返回");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean goSearchUI() throws InterruptedException {
+        Thread.sleep(EXECUTE_DELAY_TIME);
+        return SimulateManager.findTextAndClick(this, "搜索");
+    }
+
+    private void pasteSearchText() throws InterruptedException {
+        Thread.sleep(EXECUTE_DELAY_TIME);
+
+        AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
+        if (nodeInfo != null) {
+            List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByViewId(LAYOUT_ID_PREFIX + SEARCH_EDITTEXT_ID);
+            if (list != null && list.size() > 0) {
+                for (final AccessibilityNodeInfo node : list) {
+                    if (node.getClassName().equals("android.widget.EditText") && node.isEnabled()) {
+                        SimulateManager.pastContent(this, node, PinYinUtil.getPinYinUtil().getStringPinYin(currentMessage.getTalkerNickName()));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private void handleSearchResult() throws InterruptedException {
+        Thread.sleep(EXECUTE_DELAY_TIME);
+        AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
+        if (nodeInfo != null) {
+            List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByViewId(LAYOUT_ID_PREFIX + SEARCH_RESULT_LISTVIEW_ID);
+            if (list != null && list.size() > 0) {
+                AccessibilityNodeInfo listInfo = list.get(0);
+                for (int i = 0; i < listInfo.getChildCount(); i++) {
+                    AccessibilityNodeInfo itemNodeInfo = listInfo.getChild(i);
+                    for (int j = 0; j < itemNodeInfo.getChildCount(); j++) {
+                        CharSequence name = itemNodeInfo.getChild(j).getText();
+                        Log.i(TAG, "childName:" + name);
+                        if (!TextUtils.isEmpty(name)
+                                && TextUtils.equals(PinYinUtil.getPinYinUtil().getStringPinYin(name.toString()),
+                                PinYinUtil.getPinYinUtil().getStringPinYin(currentMessage.getTalkerNickName()))) {
+                            itemNodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    private void switchTextVoice() throws InterruptedException {
+        Thread.sleep(EXECUTE_DELAY_TIME);
+
+        AccessibilityNodeInfo switchButton = SimulateManager.findNode(this, LAYOUT_ID_PREFIX + CHATUI_SWITCH_ID);
+        AccessibilityNodeInfo edit = SimulateManager.findNode(this, LAYOUT_ID_PREFIX + CHATUI_EDITTEXT_ID);
+        if (edit == null) {
+            if (switchButton != null) {
+                switchButton.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            }
+        }
+    }
+
+    private void pasteSendContent() throws InterruptedException {
+        Thread.sleep(EXECUTE_DELAY_TIME);
+
+        AccessibilityNodeInfo edit = SimulateManager.findNode(this, LAYOUT_ID_PREFIX + CHATUI_EDITTEXT_ID);
+        SimulateManager.pastContent(this, edit, PinYinUtil.getPinYinUtil().getStringPinYin(currentMessage.getReplyContent()));
+    }
+
+    private void send() throws InterruptedException {
+        Thread.sleep(EXECUTE_DELAY_TIME);
+        SimulateManager.findTextAndClick(this, "发送");
+        resetAndReturnApp();
+    }
+
+    private void error() {
+
+    }
+
+    /**
+     * 主页面操作流
+     */
+    private void lanchUIFlow() {
+        try {
+            isStartTask = true;
+            goSearchUI();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 搜索页面操作流
+     */
+    private void searchUIFlow() {
+        try {
+            isStartTask = true;
+            pasteSearchText();
+            handleSearchResult();
+        } catch (Exception e) {
+
+        }
+
+    }
+
+    /**
+     * 聊天界面操作流
+     */
+    private void chattingUIFlow() {
+        try {
+            if (!isStartTask) {
+                isStartTask = true;
+                goBack();
+            }
+            switchTextVoice();
+            pasteSendContent();
+            send();
+        } catch (Exception e) {
+
+        }
+    }
+
+    public static void putMessage(com.xiezhiai.wechatplugin.model.wechat.Message  msg){
+        try {
+            msgQueue.put(msg);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static LinkedBlockingQueue<com.xiezhiai.wechatplugin.model.wechat.Message> msgQueue = new LinkedBlockingQueue<>();
+    private com.xiezhiai.wechatplugin.model.wechat.Message currentMessage;
+
+    class MsgLooper implements Runnable {
+        @Override
+        public void run() {
+
+            while (true) {
+                if (isSendSuccess) {
+                    isSendSuccess = false;
+                    try {
+                        currentMessage = msgQueue.take();
+                        if (currentMessage == null) continue;
+                        LogUtil.e(TAG + "  name = " + currentMessage.getTalkerNickName() + "  content = " + currentMessage.getReplyContent());
+                        Thread.sleep(3 * 1000);
+                        if (isWechatForeground) {
+                            AccessibilityEvent event = AccessibilityEvent.obtain();
+                            event.setEventType(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+                            event.setClassName(lastPageUI);
+                            onAccessibilityEvent(event);
+                        } else {
+                            SimulateManager.startupWechat(ControlService.this);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+        }
+    }
+}

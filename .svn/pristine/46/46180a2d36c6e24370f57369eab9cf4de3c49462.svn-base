@@ -1,0 +1,416 @@
+package com.xiezhiai.wechatplugin.func.autoreply;
+
+import android.content.ComponentName;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+import android.util.Log;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.func.autoreply.intef.Reply;
+import com.xiezhiai.wechatplugin.func.nohttp.URLManager;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleRequest;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleResult;
+import com.xiezhiai.wechatplugin.func.nohttp.interfaces.HttpResponseListener;
+import com.xiezhiai.wechatplugin.func.nohttp.interfaces.RequestListener;
+import com.xiezhiai.wechatplugin.func.transfer.PluginHandler;
+import com.xiezhiai.wechatplugin.hooker.AutoReplyHooker;
+import com.xiezhiai.wechatplugin.hooker.SendImageHooker;
+import com.xiezhiai.wechatplugin.hooker.WechatActivityHooker;
+import com.xiezhiai.wechatplugin.hooker.WechatHooker;
+import com.xiezhiai.wechatplugin.model.wechat.Message;
+import com.xiezhiai.wechatplugin.model.xiezhi.Incoming;
+import com.xiezhiai.wechatplugin.model.xiezhi.Snsqa;
+import com.xiezhiai.wechatplugin.model.xiezhi.XqaAnswer;
+import com.xiezhiai.wechatplugin.ui.aty.MainActivity;
+import com.xiezhiai.wechatplugin.utils.AppUtil;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+import com.xiezhiai.wechatplugin.utils.Tag;
+import com.xiezhiai.wechatplugin.utils.encrypt.MD5;
+import com.xiezhiai.wechatplugin.utils.image.loader.ImageLoader;
+import com.yanzhenjie.nohttp.BitmapBinary;
+import com.yanzhenjie.nohttp.FileBinary;
+import com.yanzhenjie.nohttp.NoHttp;
+import com.yanzhenjie.nohttp.rest.RequestQueue;
+import com.yanzhenjie.nohttp.rest.Response;
+import com.yanzhenjie.nohttp.rest.RestRequest;
+
+import java.io.File;
+import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Random;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+/**
+ * Created by shijiwei on 2018/10/18.
+ *
+ * @Desc:
+ */
+public class AutoReplyer implements Runnable, Reply, RequestListener {
+
+    private static final String TAG = "AutoReplyer";
+    public static final int READY = 1;
+    public static final int START = 0;
+
+    private boolean autoReply = true;
+    private static boolean isReady = true;
+    private XC_LoadPackage.LoadPackageParam lpparam;
+    private static LinkedBlockingQueue<Message> xReceiveMessageQueue = new LinkedBlockingQueue<>();
+
+    private static Handler autoReplyReadyHandler;
+
+    @Override
+    public void run() {
+
+        Looper.prepare();
+
+        autoReplyReadyHandler = new Handler(new Handler.Callback() {
+            @Override
+            public boolean handleMessage(android.os.Message msg) {
+
+                switch (msg.what) {
+                    case READY:
+                        LogUtil.log(TAG + " 队列准备就绪  isReady: " + isReady
+                                + " Thread [ " + Thread.currentThread().getId() + " , " + Thread.currentThread().getName());
+                        isReady = true;
+                    case START:
+                        LogUtil.log(TAG + " 检测 isReady：" + isReady
+                                + " Thread [ " + Thread.currentThread().getId() + " , " + Thread.currentThread().getName());
+                        if (!isReady) return true;
+                        isReady = false;
+                        try {
+                            Message message = xReceiveMessageQueue.take();
+                            switch (message.getType()) {
+                                case Message.TEXT:
+                                    Thread.sleep(getDelayTime());
+                                    replyText(message);
+                                    break;
+                                case Message.IMAGE:
+                                    replyImage(message);
+                                    break;
+                                case Message.VOICE:
+                                    replyVoice(message);
+                                    break;
+                                case Message.VIDEO:
+                                    replyVideo(message);
+                                    break;
+                            }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+
+                }
+                return true;
+            }
+        });
+
+
+        Looper.loop();
+    }
+
+    public boolean isAutoReply() {
+        return autoReply;
+    }
+
+    public void setAutoReply(boolean autoReply) {
+        this.autoReply = autoReply;
+    }
+
+    public boolean put(Message msg) {
+        try {
+            xReceiveMessageQueue.put(msg);
+            autoReplyReadyHandler.sendEmptyMessage(START);
+            LogUtil.log(TAG + "  微信自动回复接收消息 ：" + msg.getContent()
+                    + " Thread [ " + Thread.currentThread().getId() + " , " + Thread.currentThread().getName());
+            return true;
+        } catch (InterruptedException e) {
+            return false;
+        }
+    }
+
+    public void setLpparam(XC_LoadPackage.LoadPackageParam lpparam) {
+        this.lpparam = lpparam;
+    }
+
+    private int getDelayTime() {
+        Random r = new Random();
+        int ret = (2 + r.nextInt(5)) * 1000;
+        LogUtil.log(TAG + " 微信自动回复 getDelayTime : " + ret);
+        return ret;
+    }
+
+    private Method calledMethod;
+    private Object caller;
+    private Class<?> iClass;
+
+    @Override
+    public void replyText(final Message msg) {
+
+        if (msg.isInitiativeSend()) {
+            answer(msg.getTalker(), msg.getReplyContent());
+        } else {
+            getTextqaAnwser(msg.getContent(), msg.getTalker());
+        }
+    }
+
+    @Override
+    public void replyImage(Message msg) {
+
+        try {
+            goImageGalleryUI(msg.getTalker(), Long.parseLong(msg.getMsgId()), Long.parseLong(msg.getMsgSvrId()));
+            Thread.sleep(4 * 1000);
+            WechatActivityHooker.finishImageGalleryUI();
+            String imageName = msg.getImgPath().replace("THUMBNAIL_DIRPATH://th_", "");
+            String path = getImageSDcardPath(imageName);
+            File image = new File(path);
+            LogUtil.log(TAG + " 微信自动回复 <image file >  " + image + " , " + image.exists());
+            if (image.exists()) {
+                getImageqaAnwser(path, msg.getTalker());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            ready();
+        }
+
+    }
+
+    @Override
+    public void replyVoice(Message msg) {
+        ready();
+    }
+
+    @Override
+    public void replyVideo(Message msg) {
+        ready();
+    }
+
+    /*************************  FUNCTION ****************************/
+
+    private void goImageGalleryUI(String talker, long msgId, long msgSvrId) {
+        Intent intent = new Intent();
+        ComponentName componentName = new ComponentName("com.tencent.mm", "com.tencent.mm.ui.chatting.gallery.ImageGalleryUI");
+        intent.setComponent(componentName);
+        intent.putExtra("img_gallery_talker", talker);
+        intent.putExtra("img_gallery_enter_from_chatting_ui", true);
+        intent.putExtra("img_gallery_msg_id", msgId);
+        intent.putExtra("img_gallery_msg_svr_id", msgSvrId);
+
+        intent.putExtra("img_gallery_top", 0);
+        intent.putExtra("img_gallery_left", 0);
+        intent.putExtra("img_gallery_width", 300);
+        intent.putExtra("img_gallery_height", 300);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        AppUtil.getSystemContext().startActivity(intent);
+    }
+
+
+    private String getImageSDcardPath(String name) {
+        if (TextUtils.isEmpty(name)) return null;
+        String userDir = Config.xWechat.loginUser.getUinEnc();
+        String level1Dir = name.substring(0, 2);
+        String level2Dir = name.substring(2, 4);
+        File dir = new File(Environment.getExternalStorageDirectory() + "/tencent/MicroMsg/" + userDir + "/image2/" + level1Dir + "/" + level2Dir);
+        if (dir.exists()) {
+            String[] list = dir.list();
+            if (list != null && list.length != 0) {
+                for (String path : list) {
+                    if (path != null && path.startsWith(name + ".")) {
+                        return dir + "/" + path;
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+
+    /**
+     * 回复问答
+     *
+     * @param talker
+     * @param answer
+     */
+    private void answer(final String talker, String answer) {
+        try {
+            if (calledMethod == null || caller == null || iClass == null) {
+                if (lpparam == null) lpparam = WechatHooker.wxllparam;
+                Class<?> gClass = XposedHelpers.findClass("com.tencent.mm.kernel.g", lpparam.classLoader);
+                Object Ea = XposedHelpers.callStaticMethod(gClass, "Ea");
+                Object fVR = XposedHelpers.getObjectField(Ea, "fVR");
+
+                Class<?> oClass = XposedHelpers.findClass("com.tencent.mm.ac.o", lpparam.classLoader);
+                Class<?> lClass = XposedHelpers.findClass("com.tencent.mm.ac.l", lpparam.classLoader);
+
+                calledMethod = XposedHelpers.findMethodExact(oClass, "a", lClass, int.class);
+                caller = XposedHelpers.callStaticMethod(oClass, "a", fVR);
+
+                //调用这里可以实现自动回复 并发送到对方
+                iClass = XposedHelpers.findClass("com.tencent.mm.modelmulti.i", lpparam.classLoader);
+            }
+
+            Object io = XposedHelpers.newInstance(
+                    iClass,
+                    new Class[]{String.class, String.class, int.class, int.class, Object.class},
+                    talker, answer, 1, 1, new HashMap<String, String>() {{
+                        put(talker, talker);
+                    }});
+            Object[] args = new Object[]{io, 0};
+
+            XposedBridge.invokeOriginalMethod(calledMethod, caller, args);
+
+        } catch (Exception e) {
+            LogUtil.log(TAG + " 微信自动回复 失败 !! " + e.getMessage());
+        } finally {
+            ready();
+        }
+
+    }
+
+    private RequestQueue requestQueue = NoHttp.newRequestQueue();
+
+    public void addTask2Queue(int action, SimpleRequest request) {
+        requestQueue.add(action, request, new HttpResponseListener(this));
+    }
+
+    @Override
+    public void onHttpStart(int what) {
+        LogUtil.log(TAG + " onHttpStart action = " + what);
+    }
+
+    @Override
+    public void onHttpSucceed(int what, Response response) {
+        SimpleResult ret = (SimpleResult) response.get();
+        if (ret != null) {
+            LogUtil.log(TAG + " onHttpSucceed action = " + what + "  code = " + ret.getCode() + "  message = " + ret.getMessage() + "  data = " + ret.getData());
+            if (what == URLManager.Get_Text_qa_Answer.action) {
+                if (ret.getCode() == SimpleResult.SUCCESS) {
+                    try {
+
+                        XqaAnswer xqaAnswer = JSONObject.parseObject(ret.getData(), XqaAnswer.class);
+                        LogUtil.log(TAG + " XqaAnswer[ " + xqaAnswer.toString());
+                        if (xqaAnswer.isCommonqa()) {
+                            /* 常见问答 */
+                            answer(xqaAnswer.getTalker(), xqaAnswer.getDescription());
+                        } else {
+                            /* 朋友圈商品问答 */
+                            StringBuffer buffer = new StringBuffer();
+                            buffer.append("商品：" + xqaAnswer.getName() + "\n");
+                            buffer.append("详情：" + xqaAnswer.getDescription() + "\n");
+                            buffer.append("价格：" + xqaAnswer.getPrice() + "\n");
+                            buffer.append("邮费：" + xqaAnswer.getPostage() + "\n");
+                            buffer.append("售后：" + xqaAnswer.getAfterSale() + "\n");
+                            answer(xqaAnswer.getTalker(), buffer.toString());
+                        }
+
+                    } catch (Exception e) {
+                        ready();
+                    }
+
+                } else {
+                    ready();
+                }
+            } else if (what == URLManager.Get_Image_qa_Answer.action) {
+                if (ret.getCode() == SimpleResult.SUCCESS) {
+                    try {
+                        XqaAnswer xqaAnswer = JSONObject.parseObject(ret.getData(), XqaAnswer.class);
+                        LogUtil.log(TAG + " XqaAnswer[ " + xqaAnswer.toString());
+                        StringBuffer buffer = new StringBuffer();
+                        buffer.append("商品：" + xqaAnswer.getName() + "\n");
+                        buffer.append("详情：" + xqaAnswer.getDescription() + "\n");
+                        buffer.append("价格：" + xqaAnswer.getPrice() + "\n");
+                        buffer.append("邮费：" + xqaAnswer.getPostage() + "\n");
+                        buffer.append("售后：" + xqaAnswer.getAfterSale() + "\n");
+                        answer(xqaAnswer.getTalker(), buffer.toString());
+                    } catch (Exception e) {
+                        ready();
+                    }
+                } else {
+                    ready();
+                }
+            }
+        } else {
+            LogUtil.log(TAG + " onHttpSucceed action = " + what + " Response = null ");
+            ready();
+        }
+    }
+
+    /**
+     * 队列准备就绪
+     */
+    private void ready() {
+        autoReplyReadyHandler.sendEmptyMessage(READY);
+    }
+
+    @Override
+    public void onHttpFailed(int what, Response response) {
+        ready();
+        SimpleResult ret = (SimpleResult) response.get();
+        if (ret != null) {
+            LogUtil.log(TAG + " onHttpFailed action = " + what + "  code = " + ret.getCode() + "  message = " + ret.getMessage() + "  data = " + ret.getData());
+        } else {
+            LogUtil.log(TAG + " onHttpFailed action = " + what + " Response = null ");
+        }
+    }
+
+    @Override
+    public void onHttpFinish(int what) {
+        LogUtil.log(TAG + " onHttpFinish action = " + what);
+    }
+
+    /**
+     * 文字问答
+     *
+     * @param question
+     * @param talker
+     */
+    private void getTextqaAnwser(String question, String talker) {
+        SimpleRequest<SimpleResult> request = new SimpleRequest<>(URLManager.Get_Text_qa_Answer.getURL(), URLManager.Get_Text_qa_Answer.method, SimpleResult.class);
+        request.setHeader(Config.xWechat.loginUser.getUserName(),
+                PluginHandler.cookie.getUserID(),
+                PluginHandler.cookie.getTenantID(),
+                PluginHandler.cookie.getSign());
+        HashMap<String, Object> p = new HashMap<>();
+        p.put("q", question);
+        p.put("session_id", MD5.getMD5Str(Config.xWechat.loginUser.getUserName() + talker));
+        p.put("q_from", talker.endsWith(AutoReplyHooker.CHAT_ROOM_CONVERSATION) ? "group" : "person");
+        p.put("served_wx_id", talker);
+        request.setRequestBodyAsJson(p);
+        addTask2Queue(URLManager.Get_Text_qa_Answer.action, request);
+    }
+
+
+    /**
+     * 图像问答
+     *
+     * @param path
+     */
+    private void getImageqaAnwser(String path, String talker) {
+        SimpleRequest<SimpleResult> request = new SimpleRequest<>(URLManager.Get_Image_qa_Answer.getURL(), URLManager.Get_Image_qa_Answer.method, SimpleResult.class);
+        request.setHeader(Config.xWechat.loginUser.getUserName(),
+                PluginHandler.cookie.getUserID(),
+                PluginHandler.cookie.getTenantID(),
+                PluginHandler.cookie.getSign());
+        request.setMultipartFormEnable();
+        String mimeType = "image/" + path.substring((path.lastIndexOf(".") + 1));
+        request.add("imgs", new FileBinary(new File(path), path, mimeType));
+        request.add("served_wx_id", talker);
+        addTask2Queue(URLManager.Get_Image_qa_Answer.action, request);
+    }
+
+
+}

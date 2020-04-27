@@ -1,0 +1,91 @@
+package com.xiezhiai.wechatplugin.service;
+
+import android.accessibilityservice.AccessibilityService;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+
+import java.util.List;
+
+/**
+ * Created by shijiwei on 2018/10/17.
+ *
+ * @Desc: 微信插件服务
+ */
+public class WechatAccessibilityService extends AccessibilityService {
+
+    private static final String TAG = "微信插件服务";
+
+    /**
+     * 当启动服务的时候就会被调用
+     */
+    @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+        Log.e(TAG, " 启动 ");
+    }
+
+    /**
+     * 监听窗口变化的回调
+     */
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+
+        int eventType = event.getEventType();
+
+        if (eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
+            Log.e(TAG, " 通知栏 改变了  ");
+        }
+
+        if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            Log.e(TAG, " 窗口内容 改变了  ");
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+        }
+    }
+
+    /**
+     * 中断服务的回调
+     */
+    @Override
+    public void onInterrupt() {
+        Log.e(TAG, " 断开 ");
+    }
+
+
+    /**
+     * 遍历
+     *
+     * @param rootNode
+     */
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+    private void getWeChatLog(AccessibilityNodeInfo rootNode) {
+
+
+        for (int i = 0; i < rootNode.getChildCount(); i++) {
+            if (rootNode.getChild(i).getViewIdResourceName().equals("com.tencent.mm:id/aec")){
+
+            }
+        }
+        if (rootNode != null) {
+            //获取所有聊天的线性布局
+            List<AccessibilityNodeInfo> listChatRecord = rootNode.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/o");
+            if (listChatRecord.size() == 0) {
+                return;
+            }
+            //获取最后一行聊天的线性布局（即是最新的那条消息）
+            AccessibilityNodeInfo finalNode = listChatRecord.get(listChatRecord.size() - 1);
+            //获取聊天对象list（其实只有size为1）
+            List<AccessibilityNodeInfo> imageName = finalNode.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/i_");
+            //获取聊天信息list（其实只有size为1）
+            List<AccessibilityNodeInfo> record = finalNode.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/ib");
+
+        }
+    }
+}
+

@@ -1,0 +1,52 @@
+package com.xiezhiai.wechatplugin.func.transfer.intef;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Parcelable;
+
+import java.util.ArrayList;
+
+/**
+ * Created by shijiwei on 2018/11/13.
+ *
+ * @Desc:
+ */
+public interface IPluginHandler {
+
+    /**
+     * 接收微信最后一次登录的用户信息
+     *
+     * @param intent
+     */
+    void handleWechatHooked(Intent intent);
+
+    /**
+     * 接收当前登录微信的聊天室列表
+     *
+     * @param intent
+     */
+    void handleWechatChatrooms(Intent intent);
+
+    /**
+     * 接收当前登录微信的通讯录列表
+     *
+     * @param intent
+     */
+    void handleWechatContacts(Intent intent);
+
+    /**
+     * 接收当前登录微信的好友标签列表
+     *
+     * @param intent
+     */
+    void handleWechatContactLabels(Intent intent);
+
+    void notifyHookerConfigUpdate(Context context, String key, Object value);
+
+    void notifyHookerAutoReplyChatroomsUpdate(Context context, ArrayList<Parcelable> selects, boolean all);
+
+    void notifyHookerMultipleSendMessageToUser(Context context, ArrayList<Parcelable> selects, boolean all);
+
+    void notifyHookerMultipleSendMessageToChatroom(Context context, ArrayList<Parcelable> selects, boolean all);
+
+}

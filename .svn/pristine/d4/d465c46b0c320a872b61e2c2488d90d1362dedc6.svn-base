@@ -1,0 +1,194 @@
+package com.xiezhiai.wechatplugin.func.transfer;
+
+import android.app.Service;
+import android.content.Intent;
+import android.os.Handler;
+import android.os.IBinder;
+
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.ref.WeakReference;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+
+/**
+ * Created by shijiwei on 2018/11/29.
+ *
+ * @Desc:
+ */
+public class PluginClient<T> extends Service {
+
+    private static final String TAG = "PluginClient";
+    private static final String SUFFIX = "\r\n";
+    /* tcp server port */
+    private final int TCP_PORT = 6666;
+    private final int CHECK_TCP_SERVER_INTERVAL = 5 * 1000;
+    /* The monitoring service is opened */
+    private boolean isStartServer = false;
+    private boolean TCP_SERVER_ENABLE = true;
+
+    private Socket client;
+    private ExecutorService mClientPolice = Executors.newSingleThreadExecutor();
+    private LinkedBlockingQueue<T> M = new LinkedBlockingQueue<>();
+
+    private static Handler mClientLooper = new Handler();
+    private Runnable mClientRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isStartServer && TCP_SERVER_ENABLE) {
+                startClient();
+            }
+            mClientLooper.postDelayed(this, CHECK_TCP_SERVER_INTERVAL);
+        }
+    };
+
+
+    private static Handler mReaderLooper = new Handler();
+    private Runnable mReaderLooperRunnable = new Runnable() {
+        @Override
+        public void run() {
+
+        }
+    };
+
+    private static Handler mWriterLooper = new Handler();
+    private Runnable mriterLooperRunnable = new Runnable() {
+        @Override
+        public void run() {
+
+        }
+    };
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        mClientLooper.removeCallbacks(mClientRunnable);
+        mClientLooper.postDelayed(mClientRunnable, 0);
+    }
+
+    @Override
+    public void onDestroy() {
+        release();
+        super.onDestroy();
+    }
+
+    /**
+     * 服务器报文读操作
+     */
+    class ClientReader implements Runnable {
+
+        private WeakReference<Socket> wf;
+
+        public ClientReader(Socket client) {
+            wf = new WeakReference<>(client);
+        }
+
+        @Override
+        public void run() {
+            Socket socket = wf.get();
+            if (socket != null) {
+                InputStream ins = null;
+                try {
+                    ins = socket.getInputStream();
+                    byte[] buffer = new byte[1024];
+                    int len = 0;
+                    StringBuilder builder = new StringBuilder();
+                    while (((len = ins.read(buffer)) != -1) && socket != null && !socket.isClosed() && socket.isConnected() && !socket.isOutputShutdown() && !socket.isInputShutdown() && TCP_SERVER_ENABLE) {
+                        builder.append(new String(buffer, 0, len));
+                        int index = builder.indexOf(SUFFIX);
+                        if (index != -1) {
+                            String msg = builder.substring(0, index);
+                            builder.delete(0, index + SUFFIX.length());
+
+                            LogUtil.e(TAG + "  msg : " + msg + "\n" + " builder: " + builder.toString());
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * 客户端报文写操作
+     */
+    class ClientWriter implements Runnable {
+
+        private WeakReference<Socket> wf;
+
+        public ClientWriter(Socket client) {
+            wf = new WeakReference<>(client);
+        }
+
+        @Override
+        public void run() {
+            Socket socket = wf.get();
+            if (socket != null) {
+                OutputStream outs = null;
+                try {
+                    outs = socket.getOutputStream();
+                    while (socket != null && !socket.isClosed() && socket.isConnected() && !socket.isOutputShutdown() && !socket.isInputShutdown() && TCP_SERVER_ENABLE) {
+
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
+    /**
+     * 开启客户端
+     */
+    private void startClient() {
+        mClientPolice.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    LogUtil.e(TAG + " 客户端预连接.... ");
+                    release();
+                    isStartServer = true;
+                    TCP_SERVER_ENABLE = true;
+                    client = new Socket();
+                    SocketAddress socketAddress = new InetSocketAddress("localhost", TCP_PORT);
+                    client.connect(socketAddress, 2 * 1000);
+                    new Thread(new ClientReader(client)).start();
+                    new Thread(new ClientWriter(client)).start();
+                } catch (Exception e) {
+                    isStartServer = false;
+                }
+            }
+        });
+    }
+
+    /**
+     * 释放资源
+     */
+    private void release() {
+
+        try {
+            if (client != null) client.close();
+        } catch (Exception e) {
+        } finally {
+            client = null;
+            isStartServer = false;
+            TCP_SERVER_ENABLE = false;
+        }
+
+    }
+
+}

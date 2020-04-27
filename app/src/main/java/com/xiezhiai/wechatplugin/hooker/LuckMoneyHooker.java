@@ -1,0 +1,356 @@
+package com.xiezhiai.wechatplugin.hooker;
+
+import android.app.Activity;
+import android.content.ClipboardManager;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.widget.Button;
+import android.widget.Toast;
+
+import com.alibaba.fastjson.JSON;
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.func.nohttp.URLManager;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleRequest;
+import com.xiezhiai.wechatplugin.func.nohttp.base.SimpleResult;
+import com.xiezhiai.wechatplugin.func.nohttp.interfaces.HttpResponseListener;
+import com.xiezhiai.wechatplugin.func.nohttp.interfaces.RequestListener;
+import com.xiezhiai.wechatplugin.func.transfer.PluginHandler;
+import com.xiezhiai.wechatplugin.model.xiezhi.Incoming;
+import com.xiezhiai.wechatplugin.ui.frg.MyFragment;
+import com.xiezhiai.wechatplugin.utils.AppUtil;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+import com.xiezhiai.wechatplugin.utils.XmlToJson;
+import com.yanzhenjie.nohttp.NoHttp;
+import com.yanzhenjie.nohttp.rest.RequestQueue;
+import com.yanzhenjie.nohttp.rest.Response;
+import com.yanzhenjie.nohttp.rest.RestRequest;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.xmlpull.v1.XmlPullParserException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+import static android.text.TextUtils.isEmpty;
+import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
+import static de.robv.android.xposed.XposedHelpers.findFirstFieldByExactType;
+import static de.robv.android.xposed.XposedHelpers.newInstance;
+
+
+/**
+ * Created by shijiwei on 2018/10/12.
+ *
+ * @Desc: 自动收红包、转账
+ */
+public class LuckMoneyHooker implements IHooker, RequestListener {
+
+    private static final String TAG = "LuckMoneyHooker";
+
+    private static Object requestCaller;
+    private static List<LuckyMoneyMessage> luckyMoneyMessages = new ArrayList<>();
+
+    @Override
+    public void hook(final XC_LoadPackage.LoadPackageParam lpparam) {
+        XposedHelpers.findAndHookMethod(Config.xWechat.SQLiteDatabase,
+                "insert",
+                String.class, String.class, ContentValues.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        try {
+
+                            ContentValues contentValues = (ContentValues) param.args[2];
+                            String tableName = (String) param.args[0];
+                            if (TextUtils.isEmpty(tableName) || !tableName.equals("message")) {
+                                return;
+                            }
+                            if (!PluginHandler.isWechatPluginInService()) return;
+
+                            Integer type = contentValues.getAsInteger("type");
+                            if (null == type) {
+                                return;
+                            }
+                            if (type == 436207665 || type == 469762097) {
+                                handleLuckyMoney(contentValues, lpparam);
+                            } else if (type == 419430449) {
+                                handleTransfer(contentValues, lpparam);
+                            }
+                        } catch (Error | Exception e) {
+                        }
+                    }
+                });
+
+        XposedHelpers.findAndHookMethod(Config.xWechat.ReceiveLuckyMoneyRequest,
+                Config.xWechat.ReceiveLuckyMoneyRequestMethod,
+                int.class, String.class, JSONObject.class, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        try {
+                            if (!Config.xWechat.hasTimingIdentifier) {
+                                return;
+                            }
+
+                            if (luckyMoneyMessages.size() <= 0) {
+                                return;
+                            }
+
+                            String timingIdentifier = ((JSONObject) (param.args[2])).getString("timingIdentifier");
+                            if (isEmpty(timingIdentifier)) {
+                                return;
+                            }
+                            LuckyMoneyMessage luckyMoneyMessage = luckyMoneyMessages.get(0);
+
+                            Object luckyMoneyRequest = newInstance(Config.xWechat.LuckyMoneyRequest,
+                                    luckyMoneyMessage.getMsgType(), luckyMoneyMessage.getChannelId(), luckyMoneyMessage.getSendId(), luckyMoneyMessage.getNativeUrlString(), "", "", luckyMoneyMessage.getTalker(), "v1.0", timingIdentifier);
+                            XposedHelpers.callMethod(requestCaller, Config.xWechat.RequestCallerMethod, luckyMoneyRequest, getDelayTime());
+                            luckyMoneyMessages.remove(0);
+
+                        } catch (Error | Exception e) {
+                        }
+                    }
+                });
+
+        XposedHelpers.findAndHookMethod(Config.xWechat.LuckyMoneyReceiveUI,
+                Config.xWechat.ReceiveUIMethod,
+                int.class, int.class, String.class, Config.xWechat.ReceiveUIParamName, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        try {
+                            if (PluginHandler.cookie.getPermission().isAutoReceiveLuckMoney()) {
+                                Button button = (Button) findFirstFieldByExactType(param.thisObject.getClass(), Button.class).get(param.thisObject);
+                                if (button.isShown() && button.isClickable()) {
+                                    button.performClick();
+                                }
+                            }
+                        } catch (Error | Exception e) {
+                        }
+                    }
+                });
+
+
+    }
+
+    @Override
+    public void release() {
+
+    }
+
+    private void handleLuckyMoney(ContentValues contentValues, XC_LoadPackage.LoadPackageParam lpparam) throws XmlPullParserException, IOException, JSONException {
+        if (!PluginHandler.cookie.getPermission().isAutoReceiveLuckMoney()) {
+            return;
+        }
+
+        int status = contentValues.getAsInteger("status");
+        if (status == 4) {
+            return;
+        }
+
+        String talker = contentValues.getAsString("talker");
+        int isSend = contentValues.getAsInteger("isSend");
+
+        if (!isGroupTalk(talker) && isSend != 0) {
+            return;
+        }
+
+        String content = contentValues.getAsString("content");
+        LogUtil.log("微信红包："
+                + "\nstatus: " + status
+                + "    talker: " + talker
+                + "    isSend: " + isSend
+                + "\ncontent: " + content
+        );
+        if (!content.startsWith("<msg")) {
+            content = content.substring(content.indexOf("<msg"));
+        }
+
+        JSONObject wcpayinfo = new XmlToJson.Builder(content).build()
+                .getJSONObject("msg").getJSONObject("appmsg").getJSONObject("wcpayinfo");
+        String senderTitle = wcpayinfo.getString("sendertitle");
+
+
+        String nativeUrlString = wcpayinfo.getString("nativeurl");
+        Uri nativeUrl = Uri.parse(nativeUrlString);
+        int msgType = Integer.parseInt(nativeUrl.getQueryParameter("msgtype"));
+        int channelId = Integer.parseInt(nativeUrl.getQueryParameter("channelid"));
+        String sendId = nativeUrl.getQueryParameter("sendid");
+
+        addIncomingRecord(Incoming.newLuckMoney(talker));
+        requestCaller = callStaticMethod(Config.xWechat.NetworkRequest, Config.xWechat.GetNetworkByModelMethod);
+
+        if (Config.xWechat.hasTimingIdentifier) {
+            XposedHelpers.callMethod(requestCaller, Config.xWechat.RequestCallerMethod, newInstance(Config.xWechat.ReceiveLuckyMoneyRequest, channelId, sendId, nativeUrlString, 0, "v1.0"), 0);
+            luckyMoneyMessages.add(new LuckyMoneyMessage(msgType, channelId, sendId, nativeUrlString, talker));
+            return;
+        }
+
+        Object luckyMoneyRequest = newInstance(Config.xWechat.LuckyMoneyRequest,
+                msgType, channelId, sendId, nativeUrlString, "", "", talker, "v1.0");
+
+        XposedHelpers.callMethod(requestCaller, Config.xWechat.RequestCallerMethod, luckyMoneyRequest, getDelayTime());
+    }
+
+    private void handleTransfer(ContentValues contentValues, XC_LoadPackage.LoadPackageParam lpparam) throws IOException, XmlPullParserException, PackageManager.NameNotFoundException, InterruptedException, JSONException {
+        if (!PluginHandler.cookie.getPermission().isAutoReceiveTransfer()) {
+            return;
+        }
+        JSONObject wcpayinfo = new XmlToJson.Builder(contentValues.getAsString("content")).build()
+                .getJSONObject("msg").getJSONObject("appmsg").getJSONObject("wcpayinfo");
+
+        int paysubtype = wcpayinfo.getInt("paysubtype");
+        if (paysubtype != 1) {
+            return;
+        }
+
+        String transactionId = wcpayinfo.getString("transcationid");
+        String transferId = wcpayinfo.getString("transferid");
+        int invalidtime = wcpayinfo.getInt("invalidtime");
+        String feedesc = wcpayinfo.getString("feedesc");
+        float money;
+        try {
+            money = Float.parseFloat(feedesc.substring(1));
+        } catch (Exception e) {
+            money = 0.00f;
+        }
+
+        if (null == requestCaller) {
+            requestCaller = callStaticMethod(Config.xWechat.NetworkRequest, Config.xWechat.GetNetworkByModelMethod);
+        }
+
+        String talker = contentValues.getAsString("talker");
+        LogUtil.log("微信转账："
+                + "\ntalker: " + talker
+                + "\ncontent: " + contentValues.getAsString("content")
+        );
+        addIncomingRecord(Incoming.newTransfer(money, talker));
+        XposedHelpers.callMethod(requestCaller, Config.xWechat.RequestCallerMethod, newInstance(Config.xWechat.GetTransferRequest, transactionId, transferId, 0, "confirm", talker, invalidtime), 0);
+    }
+
+
+    private int getDelayTime() {
+        int delayTime = 0;
+        if (true) {
+            delayTime = getRandom(0, 1000);
+        }
+        return delayTime;
+    }
+
+    private boolean isGroupTalk(String talker) {
+        return talker.endsWith("@chatroom");
+    }
+
+
+    private int getRandom(int min, int max) {
+        return min + (int) (Math.random() * (max - min + 1));
+    }
+
+
+    @Override
+    public void onHttpStart(int what) {
+
+    }
+
+    @Override
+    public void onHttpSucceed(int what, Response response) {
+        SimpleResult ret = (SimpleResult) response.get();
+        if (ret != null) {
+            LogUtil.log(TAG + " onHttpSucceed action = " + what + "  code = " + ret.getCode() + "  message = " + ret.getMessage() + "  data = " + ret.getData());
+            if (ret.getCode() == SimpleResult.SUCCESS) {
+                notityAppUIRefresh();
+            }
+        } else {
+            LogUtil.log(TAG + " onHttpSucceed action = " + what + " Response = null ");
+        }
+    }
+
+    @Override
+    public void onHttpFailed(int what, Response response) {
+        SimpleResult ret = (SimpleResult) response.get();
+        if (ret != null) {
+            LogUtil.log(TAG + " onHttpFailed action = " + what + "  code = " + ret.getCode() + "  message = " + ret.getMessage() + "  data = " + ret.getData());
+        } else {
+            LogUtil.log(TAG + " onHttpFailed action = " + what + " Response = null ");
+        }
+    }
+
+    @Override
+    public void onHttpFinish(int what) {
+
+    }
+
+    private RequestQueue requestQueue = NoHttp.newRequestQueue();
+
+    public void addTask2Queue(int action, SimpleRequest request) {
+        requestQueue.add(action, request, new HttpResponseListener(this));
+    }
+
+    /**
+     * 增加一笔收入记录
+     */
+    public void addIncomingRecord(Incoming incoming) {
+        SimpleRequest<SimpleResult> request = new SimpleRequest<>(URLManager.Add_Incoming_Record.getURL(), URLManager.Add_Incoming_Record.method, SimpleResult.class);
+        request.setHeader(Config.xWechat.loginUser.getUserName(),
+                PluginHandler.cookie.getUserID(),
+                PluginHandler.cookie.getTenantID(),
+                PluginHandler.cookie.getSign());
+        request.setRequestBodyAsJson(incoming);
+        addTask2Queue(URLManager.Add_Incoming_Record.action, request);
+    }
+
+    private void notityAppUIRefresh() {
+        Intent intent = new Intent(MyFragment.UIRefreshReceiver.ACTION_UI_REFRESH);
+        intent.putExtra(MyFragment.UIRefreshReceiver.TYPE, MyFragment.UIRefreshReceiver.ADD_INCOMING);
+        AppUtil.getSystemContext().sendBroadcast(intent);
+    }
+}
+
+class LuckyMoneyMessage {
+
+    private int msgType;
+
+    private int channelId;
+
+    private String sendId;
+
+    private String nativeUrlString;
+
+    private String talker;
+
+    public LuckyMoneyMessage(int msgType, int channelId, String sendId, String nativeUrlString, String talker) {
+        this.msgType = msgType;
+        this.channelId = channelId;
+        this.sendId = sendId;
+        this.nativeUrlString = nativeUrlString;
+        this.talker = talker;
+    }
+
+    public int getMsgType() {
+        return msgType;
+    }
+
+    public int getChannelId() {
+        return channelId;
+    }
+
+    public String getSendId() {
+        return sendId;
+    }
+
+    public String getNativeUrlString() {
+        return nativeUrlString;
+    }
+
+    public String getTalker() {
+        return talker;
+    }
+
+}

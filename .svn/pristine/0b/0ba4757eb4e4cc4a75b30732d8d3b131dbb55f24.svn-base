@@ -1,0 +1,228 @@
+package com.xiezhiai.wechatplugin.hooker;
+
+import android.content.ContentValues;
+import android.text.TextUtils;
+
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.func.autoreply.AutoReplyer;
+import com.xiezhiai.wechatplugin.func.transfer.PluginHandler;
+import com.xiezhiai.wechatplugin.model.wechat.Message;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+import static de.robv.android.xposed.XposedHelpers.callMethod;
+
+/**
+ * Created by shijiwei on 2018/10/12.
+ *
+ * @Desc: 自动回复消息
+ */
+public class AutoReplyHooker implements IHooker {
+
+
+    /**
+     * "1" ->  [纯文本]
+     * "3" -> "[图片]"
+     * "34" -> "[语音]"
+     * "47" -> "[表情]"
+     * "50" -> "[语音/视频通话]"
+     * "43" -> "[小视频]"
+     * "49" -> "[分享]"
+     * "48" -> content          // 位置信息
+     * "10000" -> content       // 系统提示信息
+     * else -> content          // 其他信息，包含红包、转账等
+     */
+
+    private static final String TAG = "AutoReplyHooker";
+    public static final int MSG_SEND_BY_SELF = 1;
+    public static final String CHAT_ROOM_CONVERSATION = "@chatroom";
+    public static final String USER_CONVERSATION = "wxid_";
+
+    public static final String wxMsgSplitStr = "\r\n\t";
+    public static Object chatting_o;
+
+    private static AutoReplyer autoReplyer;
+
+    static {
+        autoReplyer = new AutoReplyer();
+        new Thread(autoReplyer).start();
+    }
+
+    @Override
+    public void hook(final XC_LoadPackage.LoadPackageParam lpparam) {
+
+
+        final Class<?> cls_chatting_o = XposedHelpers.findClass("com.tencent.mm.ui.chatting.o", lpparam.classLoader);
+        XposedBridge.hookAllConstructors(cls_chatting_o, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                chatting_o = param.thisObject;
+            }
+        });
+
+        Class<?> cls_modelmulti_i = XposedHelpers.findClass("com.tencent.mm.modelmulti.i", lpparam.classLoader);
+        XposedHelpers.findAndHookConstructor(cls_modelmulti_i,
+                String.class, String.class, int.class, int.class, Object.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+
+                        String content = (String) param.args[1];
+                        LogUtil.e(TAG + "  cls_modelmulti_i CALL Constructor [ origin_content = " + content);
+
+                        if (!TextUtils.isEmpty(content) && (content.indexOf(wxMsgSplitStr) != -1)) {
+                            String[] split = content.split(wxMsgSplitStr);
+                            param.args[0] = split[0];
+                            param.args[1] = split[1];
+                        }
+                    }
+                });
+
+        XposedHelpers.findAndHookMethod(
+                "com.tencent.wcdb.database.SQLiteDatabase",
+                lpparam.classLoader,
+                "insert",
+                String.class, String.class, ContentValues.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+
+                        if (param.args[0].equals("message")) {
+                            if (!PluginHandler.isWechatPluginInService()) return;
+                            autoReplyer.setLpparam(lpparam);
+                            ContentValues contentValues = ((ContentValues) param.args[2]);
+                            int type = contentValues.getAsInteger("type");
+                            if (type == 1 || type == 3 || type == 43) {
+
+                                final String talker = contentValues.getAsString("talker");
+                                String content = contentValues.getAsString("content");
+                                Integer isSend = contentValues.getAsInteger("isSend");
+                                String msgId = contentValues.getAsString("msgId");
+                                String msgSvrId = contentValues.getAsString("msgSvrId");
+                                String imgPath = contentValues.getAsString("imgPath");
+
+                                Message message = new Message(talker, content, type, isSend, msgSvrId, msgId, imgPath);
+                                LogUtil.log("微信自动回复 | Message talker : " + talker
+                                        + "   type : " + type
+                                        + "  msgSvrId ：" + msgSvrId
+                                        + "  imgPath ：" + imgPath
+                                        + "  content ：" + content);
+
+                                if (isSend == MSG_SEND_BY_SELF) {
+                                    return;
+                                }
+
+                                if (talker.equals("weixin") || talker.equals("filehelper")) {
+                                    return;
+                                }
+
+                                if (talker.endsWith(CHAT_ROOM_CONVERSATION)) {
+                                    /* 群聊组会话,@自己的消息才回复 */
+                                    String compareName = Config.xWechat.loginUser.getUserNickName();
+                                    String chatroomSelfDisplyName = getChatroomSelfDisplyName(talker);
+                                    if (chatroomSelfDisplyName != null) {
+                                        compareName = chatroomSelfDisplyName;
+                                    }
+                                    LogUtil.e("群回复 compareName = " + compareName + "\n"
+                                            + "isAutoReplyChatroom = " + PluginHandler.cookie.getPermission().isAutoReplyChatroom() + " \n "
+                                            + "isAllChatroomsAutoReply = " + PluginHandler.isAllChatroomsAutoReply + "\n"
+                                            + "content contains at self = " + content.contains("@" + compareName) + "\n"
+                                    );
+
+                                    if (!PluginHandler.cookie.getPermission().isAutoReplyChatroom() || !content.contains("@" + compareName)) {
+                                        return;
+                                    }
+
+                                    if (!PluginHandler.isAllChatroomsAutoReply) {
+                                        boolean shot = false;
+                                        for (int i = 0; i < PluginHandler.autoReplyChatrooms.size(); i++) {
+                                            if (PluginHandler.autoReplyChatrooms.get(i).getId().equals(talker)) {
+                                                shot = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!shot) return;
+                                    }
+
+                                    for (int i = 0; i < PluginHandler.autoReplyChatrooms.size(); i++) {
+                                        LogUtil.log("微信自动回复 all chatroom: " + PluginHandler.autoReplyChatrooms + "  id: " + PluginHandler.autoReplyChatrooms.get(i).getId());
+                                    }
+
+                                    /* 对群发内容做裁剪处理 */
+                                    String flag = "@" + compareName;
+                                    message.setContent(
+                                            content.substring(content.indexOf(flag) + flag.length())
+                                    );
+
+                                    LogUtil.log("微信自动回复 聊天组消息裁剪:" + message.getContent());
+                                } else {
+                                    /* 普通好友聊天 */
+                                    if (!PluginHandler.cookie.getPermission().isAutoReplyUser()) {
+                                        return;
+                                    }
+                                }
+
+                                autoReplyer.put(message);
+                            }
+                        }
+                    }
+                }
+        );
+    }
+
+    /**
+     * 获取自己在群里在昵称
+     *
+     * @return
+     */
+    public static String getChatroomSelfDisplyName(String chatroomId) {
+        String result = null;
+        try {
+            Object db = WechatSQLiteDatabaseHooker.xEnSQLiteDatabase;
+            Object cursor = callMethod(db, "query",
+                    "chatroom",
+                    null, "chatroomname = ?", new String[]{chatroomId},
+                    null, null, null, null);
+            while ((boolean) callMethod(cursor, "moveToNext")) {
+                String selfDisplayName = (String) callMethod(cursor, "getString", 9);
+                LogUtil.e("群昵称 ：" + selfDisplayName);
+                result = selfDisplayName;
+                break;
+            }
+        } catch (Exception e) {
+        } finally {
+            return result;
+        }
+    }
+
+    /**
+     * @param msg
+     */
+    public static void putMessage(Message msg) {
+        if (autoReplyer == null || msg == null) return;
+        autoReplyer.put(msg);
+    }
+
+    /**
+     * 发送文字
+     *
+     * @param talker
+     * @param text
+     */
+    public static void senTextMsg(String talker, String text) {
+
+        try {
+            LogUtil.e(TAG + " CALL senMsg ");
+            if (chatting_o != null) {
+                Object isSendSuccess = XposedHelpers.callMethod(chatting_o, "FZ", talker + wxMsgSplitStr + text);
+            }
+        } catch (Exception e) {
+
+        }
+    }
+
+}

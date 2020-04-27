@@ -1,0 +1,186 @@
+package com.xiezhiai.wechatplugin.utils;
+
+import android.app.ActivityManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.support.v4.content.FileProvider;
+import android.text.TextUtils;
+import android.util.Log;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.security.PublicKey;
+import java.util.List;
+
+import de.robv.android.xposed.XposedHelpers;
+
+import static de.robv.android.xposed.XposedHelpers.findClass;
+
+/**
+ * Created by shijiwei on 2018/10/12.
+ *
+ * @Desc:
+ */
+public class AppUtil {
+
+
+    /**
+     * 获取系统上下文
+     *
+     * @return
+     */
+    public static Context getSystemContext() {
+        Class activityThreadClass = findClass("android.app.ActivityThread", null);
+        Object activityThread = XposedHelpers.callStaticMethod(activityThreadClass, "currentActivityThread");
+        return (Context) XposedHelpers.callMethod(activityThread, "getSystemContext");
+    }
+
+    /**
+     * 获取app版本名
+     *
+     * @param context
+     * @param packageName
+     * @return
+     */
+    public static String getVersionName(Context context, String packageName) {
+        try {
+            PackageManager packageManager = context.getPackageManager();
+            PackageInfo packInfo = packageManager.getPackageInfo(packageName, 0);
+            return packInfo.versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            return "wechat is not installed on device";
+        }
+    }
+
+
+    /**
+     * 版本名转换为可比较的数字
+     *
+     * @param versionName
+     * @return
+     */
+    public static int getVersionNumber(String versionName) {
+        String[] v = versionName.split("\\.");
+        if (v.length >= 3)
+            return Integer.valueOf(v[0]) * 100 * 100 + Integer.valueOf(v[1]) * 100 + Integer.valueOf(v[2]);
+        else
+            return 0;
+    }
+
+
+    /**
+     * 判断app是否已运行
+     *
+     * @param pkg
+     * @return
+     */
+    public static boolean isAppAlive(String pkg) {
+        ShellUtils.CommandResult commandResult = ShellUtils.execCmd("ps |grep " + pkg, false);
+        LogUtil.e(commandResult.result + " | " + commandResult.successMsg + " | " + commandResult.errorMsg);
+        return (commandResult.successMsg != null && commandResult.successMsg.contains(pkg));
+    }
+
+
+    /**
+     * 检测apk是否安装
+     *
+     * @param context
+     * @param packageName
+     * @return
+     */
+    public static boolean isInstalledApk(Context context, String packageName) {
+        final PackageManager packageManager = context.getPackageManager();
+        // 获取所有已安装程序的包信息
+        List<PackageInfo> pinfo = packageManager.getInstalledPackages(0);
+        for (int i = 0; i < pinfo.size(); i++) {
+            if (pinfo.get(i).packageName.equalsIgnoreCase(packageName))
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * 通过包名启动app
+     *
+     * @param context
+     * @param pkg
+     * @return
+     */
+    public static boolean startAppWithPackage(Context context, String pkg) {
+        PackageManager packageManager = context.getPackageManager();
+        Intent intent = packageManager.getLaunchIntentForPackage(pkg);
+        if (intent == null) {
+            return false;
+        } else {
+            context.startActivity(intent);
+            return true;
+        }
+    }
+
+    /**
+     * 安装apk文件
+     *
+     * @param con
+     * @param apkPath
+     * @return
+     */
+    public static boolean installApk(Context con, String apkPath) {
+        try {
+            if (TextUtils.isEmpty(apkPath))
+                return false;
+            File file = new File(apkPath);
+            if (!file.exists()) {
+                return false;
+            }
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//增加读写权限
+            }
+            intent.setDataAndType(getPathUri(con, apkPath), "application/vnd.android.package-archive");
+            con.startActivity(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } catch (Error error) {
+            error.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public static Uri getPathUri(Context context, String filePath) {
+        Uri uri;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            String packageName = context.getPackageName();
+            uri = FileProvider.getUriForFile(context, packageName + ".fileProvider", new File(filePath));
+        } else {
+            uri = Uri.fromFile(new File(filePath));
+        }
+        return uri;
+    }
+
+
+    /**
+     * 获取进程的名字
+     *
+     * @param context
+     * @return
+     */
+    public static String getCurProcessName(final Context context) {
+        final int myPid = android.os.Process.myPid();
+        for (final ActivityManager.RunningAppProcessInfo appProcessInfo : ((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).getRunningAppProcesses()) {
+            if (appProcessInfo.pid == myPid) {
+                return appProcessInfo.processName;
+            }
+        }
+        return null;
+    }
+}

@@ -1,0 +1,68 @@
+package com.xiezhiai.wechatplugin.hooker;
+
+
+import com.xiezhiai.wechatplugin.core.Config;
+import com.xiezhiai.wechatplugin.func.transfer.PluginServer;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+
+import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+/**
+ * Created by shijiwei on 2018/10/12.
+ *
+ * @Desc:
+ */
+public class WechatHooker implements IXposedHookLoadPackage {
+
+    public static XC_LoadPackage.LoadPackageParam wxllparam;
+
+    @Override
+    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
+
+        //Only hook wechat process
+        if (lpparam.packageName.equals(Config.xWechat.PACKAGE_NAME) && lpparam.processName.equals(Config.xWechat.PACKAGE_NAME)) {
+            try {
+                /* 初始化配置 */
+                if (Config.init(lpparam)) {
+                    /* 启动插件 */
+                    startup(
+                            lpparam,
+                            new IHooker[]{
+                                    new WechatSQLiteDatabaseHooker(),
+                                    new WechatActivityHooker(),
+                                    new AutoReplyHooker(),
+                                    new LuckMoneyHooker(),
+                                    new SnsHooker(),
+                                    new ContactsHooker(),
+//                                    new SendVoiceHooker(),
+//                                    new SendImageHooker()
+                            });
+                    wxllparam = lpparam;
+
+                    new PluginServer().onCreate();
+                }
+
+            } catch (Exception e) {
+                LogUtil.log(e.getMessage());
+            }
+        }
+    }
+
+
+    /**
+     * 启动自定义的hooker
+     *
+     * @param lpparam
+     * @param hookers
+     */
+    private void startup(XC_LoadPackage.LoadPackageParam lpparam, IHooker[] hookers) {
+        if (hookers != null && hookers.length != 0) {
+            for (IHooker hooker : hookers) {
+                hooker.hook(lpparam);
+            }
+        }
+    }
+
+
+}

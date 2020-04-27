@@ -1,0 +1,36 @@
+{
+    "logs": [
+        {
+            "outputFile": "D:\\shijiwei\\android\\WechatPlugin\\WechatPlugin\\app\\build\\intermediates\\incremental\\mergeReleaseResources\\merged.dir\\values-zh\\values-zh.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Administrator\\.gradle\\caches\\transforms-1\\files-1.1\\permission-2.0.0-rc12.aar\\4158a90e6f6b7555829e9fe104ab36b5\\res\\values-zh\\values-zh.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10",
+                        "startColumns": "4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,111,165,222,280,339,392,450,501",
+                        "endColumns": "55,53,56,57,58,52,57,50,56",
+                        "endOffsets": "106,160,217,275,334,387,445,496,553"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\Administrator\\.gradle\\caches\\transforms-1\\files-1.1\\SmartRefreshLayout-1.1.0-alpha-14.aar\\b71be1a61e54ce1eca617ea4f093efc0\\res\\values-zh\\values-zh.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,163,255,306,357,410,465,519,575,629,680,731,784,838,894,948,1004",
+                        "endColumns": "107,91,50,50,52,54,53,55,53,50,50,52,53,55,53,55,60",
+                        "endOffsets": "158,250,301,352,405,460,514,570,624,675,726,779,833,889,943,999,1060"
+                    },
+                    "to": {
+                        "startLines": "11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "558,666,758,809,860,913,968,1022,1078,1132,1183,1234,1287,1341,1397,1451,1507",
+                        "endColumns": "107,91,50,50,52,54,53,55,53,50,50,52,53,55,53,55,60",
+                        "endOffsets": "661,753,804,855,908,963,1017,1073,1127,1178,1229,1282,1336,1392,1446,1502,1563"
+                    }
+                }
+            ]
+        }
+    ]
+}

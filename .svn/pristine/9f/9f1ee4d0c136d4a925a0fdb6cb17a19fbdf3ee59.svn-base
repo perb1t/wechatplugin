@@ -1,0 +1,217 @@
+package com.xiezhiai.wechatplugin.ui.aty;
+
+import android.content.Intent;
+import android.graphics.Rect;
+import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import com.xiezhiai.wechatplugin.R;
+import com.xiezhiai.wechatplugin.adapter.SendMsgSelectGroupAdapter;
+import com.xiezhiai.wechatplugin.hooker.WechatActivityHooker;
+import com.xiezhiai.wechatplugin.model.wechat.ChatRoom;
+import com.xiezhiai.wechatplugin.model.wechat.ContactLabel;
+import com.xiezhiai.wechatplugin.receiver.CommandReceiver;
+import com.xiezhiai.wechatplugin.receiver.HookDataReceiver;
+import com.xiezhiai.wechatplugin.ui.app.WechatPluginApplication;
+import com.xiezhiai.wechatplugin.ui.base.BaseActivity;
+import com.xiezhiai.wechatplugin.ui.frg.GroupSendMessageFragment;
+import com.xiezhiai.wechatplugin.utils.DensityUtils;
+import com.xiezhiai.wechatplugin.utils.LogUtil;
+import com.xiezhiai.wechatplugin.utils.display.DisplayUtility;
+import com.xiezhiai.wechatplugin.widget.CommonTopBar;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Created by shijiwei on 2018/10/21.
+ *
+ * @Desc:
+ */
+public class SendMsgSelectGroupTargetActivity extends BaseActivity implements CommonTopBar.CommonTopBarListener, View.OnClickListener, SendMsgSelectGroupAdapter.SelectChatroomListener {
+
+    private CommonTopBar commonTopBar;
+    private LinearLayout container;
+    private LinearLayout lvContainer;
+    private LinearLayout layoutAllChatroom;
+    private LinearLayout layoutPartChatroom;
+    private ListView lvSendTarget;
+    private View btnSend;
+    private CheckBox cbAllChatroom;
+    private CheckBox cbPartChatroom;
+
+    private List<ChatRoom> chatRoomList = new ArrayList<>();
+    private SendMsgSelectGroupAdapter adapter;
+
+
+    private int lvItemHeight;
+    private int containerHeight;
+    private int lvContainerHeight;
+    private int lvHeight;
+
+
+    @Override
+    public int getLayoutResId() {
+        return R.layout.activity_send_msg_select_group_target;
+    }
+
+    @Override
+    public void initialData(Bundle savedInstanceState) {
+        adapter = new SendMsgSelectGroupAdapter(this, chatRoomList);
+    }
+
+    @Override
+    public void initialView() {
+
+        commonTopBar = findViewById(R.id.common_topbar);
+        layoutAllChatroom = findViewById(R.id.layout_all_chatroom);
+        layoutPartChatroom = findViewById(R.id.layout_part_chatroom);
+        container = findViewById(R.id.container);
+        lvContainer = findViewById(R.id.lv_container);
+        lvSendTarget = findViewById(R.id.lv_send_target);
+        cbPartChatroom = findViewById(R.id.cb_part_chatroom);
+        cbAllChatroom = findViewById(R.id.cb_all_chatroom);
+        btnSend = findViewById(R.id.btn_send);
+        lvSendTarget.setAdapter(adapter);
+
+        lvContainer.post(new Runnable() {
+            @Override
+            public void run() {
+                containerHeight = Math.max(containerHeight, container.getHeight());
+                lvContainerHeight = Math.max(lvContainerHeight, lvContainer.getHeight());
+                lvHeight = Math.max(lvHeight, lvSendTarget.getHeight());
+            }
+        });
+    }
+
+    @Override
+    public void initialEvn() {
+        commonTopBar.setCommonTopBarListener(this);
+        btnSend.setOnClickListener(this);
+        cbAllChatroom.setOnClickListener(this);
+        cbPartChatroom.setOnClickListener(this);
+        layoutAllChatroom.setOnClickListener(this);
+        layoutPartChatroom.setOnClickListener(this);
+        adapter.setSelectChatroomListener(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        chatRoomList.clear();
+        chatRoomList.addAll(HookDataReceiver.loginedWechatChatRooms);
+        adapter.notifyDataSetChanged();
+        reMeasureLayout();
+    }
+
+    @Override
+    public void onBackKeyPressed() {
+        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        HookDataReceiver.resetChatRooms();
+        super.onDestroy();
+    }
+
+    @Override
+    public void onNetworkStateChanged(int type, boolean isAvailable) {
+
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+
+    }
+
+    @Override
+    public void onAllUnselected(boolean all) {
+        cbPartChatroom.setChecked(!all);
+        if (!all) cbAllChatroom.setChecked(false);
+    }
+
+    @Override
+    public void onTopLeftButtonClick(View v) {
+        finish();
+    }
+
+    @Override
+    public void onTopRightButtonClick(View v) {
+
+    }
+
+
+    @Override
+    public void onClick(View v) {
+
+        switch (v.getId()) {
+            case R.id.layout_all_chatroom:
+                cbAllChatroom.setChecked(true);
+                cbPartChatroom.setChecked(false);
+                adapter.cancelSelected();
+                break;
+            case R.id.layout_part_chatroom:
+                cbPartChatroom.setChecked(true);
+                cbAllChatroom.setChecked(false);
+                if (!cbPartChatroom.isChecked()) adapter.cancelSelected();
+                break;
+            case R.id.cb_all_chatroom:
+                cbPartChatroom.setChecked(false);
+                adapter.cancelSelected();
+                break;
+
+            case R.id.cb_part_chatroom:
+                cbAllChatroom.setChecked(false);
+                if (!cbPartChatroom.isChecked()) adapter.cancelSelected();
+                break;
+            case R.id.btn_send:
+                if (!cbAllChatroom.isChecked() && !cbPartChatroom.isChecked()) {
+                    showMsg("请选择发送目标");
+                    return;
+                }
+
+                ArrayList<ChatRoom> selected = adapter.getSelected();
+                if (cbPartChatroom.isChecked()) {
+                    if (selected.size() == 0) {
+                        showMsg("请选择发送目标");
+                        return;
+                    }
+                }
+                notifyHooker2SendMsg(cbAllChatroom.isChecked(), selected);
+                WechatPluginApplication.getApplication().backToSpecificActivity(MainActivity.class);
+                break;
+        }
+    }
+
+    private void notifyHooker2SendMsg(boolean all, ArrayList<ChatRoom> chatRooms) {
+        Intent intent = new Intent(CommandReceiver.ACTION_SEND_MSG_TO_CHATROOM);
+        intent.putExtra(CommandReceiver.KEY_REPLY_CONTENT, getIntent().getStringExtra(GroupSendMessageFragment.SEND_CONTENT));
+        intent.putExtra(CommandReceiver.KEY_SELECTED_TARGET, chatRooms);
+        intent.putExtra(CommandReceiver.KEY_SELECTED_ALL, all);
+        sendBroadcast(intent);
+    }
+
+    private void reMeasureLayout() {
+        LinearLayout.LayoutParams lpContainer = (LinearLayout.LayoutParams) container.getLayoutParams();
+        LinearLayout.LayoutParams lpLvContainer = (LinearLayout.LayoutParams) lvContainer.getLayoutParams();
+        if (lvSendTarget.getChildCount() != 0) {
+            lvItemHeight = lvSendTarget.getChildAt(0).getMeasuredHeight();
+        }
+        int h = chatRoomList.size() * lvItemHeight;
+        if (h < lvHeight) {
+            lpContainer.weight = 0;
+            lpContainer.height = containerHeight - (lvHeight - h);
+            lpLvContainer.height = lvContainerHeight - (lvHeight - h);
+        } else {
+            lpContainer.weight = 1;
+            lpLvContainer.height = LinearLayout.LayoutParams.MATCH_PARENT;
+        }
+    }
+}
